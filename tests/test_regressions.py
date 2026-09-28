@@ -51,6 +51,19 @@ def test_article_ids_preserved_tracking_removed():
     assert normalize("https://example.com/article?id=1&utm_source=test#x") == normalize("https://example.com/article?id=1")
 
 
+def test_small_split_respects_api_minimum():
+    session = Mock()
+    session.get.side_effect = [response([{}, {}]), response([{"url": "a"}]), response([{"url": "b"}])]
+    window = collector.CoverageWindow(NOW-timedelta(minutes=20), NOW, 1, "test")
+    with patch.object(collector.time, "sleep"):
+        collector._request_json(session, "test", window, Settings(max_records=2))
+    for call in session.get.call_args_list[1:]:
+        params = call.kwargs["params"]
+        start = datetime.strptime(params["startdatetime"], "%Y%m%d%H%M%S")
+        end = datetime.strptime(params["enddatetime"], "%Y%m%d%H%M%S")
+        assert end-start >= timedelta(minutes=15)
+
+
 def test_all_queries_require_region():
     for query, _ in collector.build_queries():
         assert any(place in query for place in collector.LATIN_AMERICA_PLACES)

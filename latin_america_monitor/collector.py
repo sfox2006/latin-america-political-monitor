@@ -113,8 +113,11 @@ def _request_json(session: requests.Session, query: str, window: CoverageWindow,
                     raise CollectionError("Result cap reached at minimum 15-minute window; coverage incomplete")
                 midpoint = window.start + (window.end - window.start) / 2
                 midpoint = midpoint.replace(microsecond=0)
-                left = CoverageWindow(window.start, midpoint, window.hours, window.label)
-                right = CoverageWindow(midpoint, window.end, window.hours, window.label)
+                # DOC API requires at least 15 minutes; overlap short child windows.
+                left_end = max(midpoint, window.start + timedelta(minutes=15))
+                right_start = min(midpoint, window.end - timedelta(minutes=15))
+                left = CoverageWindow(window.start, left_end, window.hours, window.label)
+                right = CoverageWindow(right_start, window.end, window.hours, window.label)
                 return _request_json(session, query, left, settings) + _request_json(session, query, right, settings)
             return articles
         except (requests.RequestException, ValueError) as exc:
