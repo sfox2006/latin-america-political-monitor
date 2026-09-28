@@ -12,18 +12,20 @@ import requests
 from bs4 import BeautifulSoup
 
 from .config import Settings
-from .models import Headline, Publication
+from .models import Headline
 from .sources import INTERNATIONAL_PUBLICATIONS, LATIN_AMERICAN_PUBLICATIONS, match_publication
 from .window import CoverageWindow
 
 LOGGER = logging.getLogger(__name__)
 GDELT_ENDPOINT = "https://api.gdeltproject.org/api/v2/doc/doc"
 
+# The DOC API searches machine-translated English text and rejects encoded queries
+# around 250 characters (a 243-character query succeeded; a 400-character query was
+# rejected as "too short or too long"). These terms are the largest political set
+# that still leaves room to AND every catalogue domain with every regional place.
 POLITICAL_TERMS = (
-    "politics", "political", "government", "congress", "senate", "president", "minister",
-    "election", "parliament", "democracy", "diplomatic", "sanctions", "política", "gobierno",
-    "congreso", "elección", "elecciones", "presidente", "ministro", "asamblea", "governo",
-    "congresso", "eleição", "eleições", "presidente", "ministro", "democracia",
+    "president", "government", "election", "minister", "congress",
+    "senate", "parliament", "politics", "democracy", "sanctions",
 )
 
 LATIN_AMERICA_PLACES = (
@@ -33,32 +35,95 @@ LATIN_AMERICA_PLACES = (
     "Paraguay", "Peru", "Perú", "Puerto Rico", "Uruguay", "Venezuela",
 )
 
-
-def _chunks(values: list[Publication] | tuple[str, ...], size: int):
-    for index in range(0, len(values), size):
-        yield values[index:index + size]
+# Stay under the length that the live API accepted.
+MAX_ENCODED_QUERY_LENGTH = 240
+# Windows shorter than this were rejected ("Timespan is too short") when they
+# ended near the present. Further caps are split by boolean query instead.
+MIN_QUERY_TIMESPAN = timedelta(minutes=60)
+TRACKING_PARAMS = {"fbclid", "gclid", "mc_cid", "mc_eid", "igshid", "ref_src"}
 
 
 def _or_group(values: list[str] | tuple[str, ...], prefix: str = "") -> str:
     terms = []
+    seen: set[str] = set()
     for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
         escaped = value.replace('"', "")
         rendered = f'"{escaped}"' if " " in escaped else escaped
         terms.append(f"{prefix}{rendered}")
+    if not terms:
+        raise ValueError("Cannot build an empty OR group")
     return "(" + " OR ".join(terms) + ")"
 
 
-def build_queries(batch_size: int = 8) -> list[tuple[str, str]]:
-    """Return (query, label) pairs for local and international publications."""
+def _encoded_query_length(query: str) -> int:
+    encoded = urlencode({"query": query})
+    return len(encoded) - len("query=")
+
+
+def _pack_terms(values: list[str] | tuple[str, ...], companions: list[str], limit: int) -> list[list[str]] | None:
+    """Pack values into OR groups that stay within the encoded query limit."""
+    batches: list[list[str]] = []
+    current: list[str] = []
+    for value in values:
+        trial = current + [value]
+        query = " ".join([_or_group(trial), *companions])
+        if _encoded_query_length(query) > limit and current:
+            batches.append(current)
+            current = [value]
+            if _encoded_query_length(" ".join([_or_group(current), *companions])) > limit:
+                return None
+        elif _encoded_query_length(query) > limit:
+            return None
+        else:
+            current = trial
+    if current:
+        if _encoded_query_length(" ".join([_or_group(current), *companions])) > limit:
+            return None
+        batches.append(current)
+    return batches
+
+
+def build_queries(batch_size: int = 8, max_encoded_length: int = MAX_ENCODED_QUERY_LENGTH) -> list[tuple[str, str]]:
+    """Return (query, label) pairs that cover every catalogue domain and regional place.
+
+    Each query is domain AND place AND politics, packed so the encoded text stays
+    within the DOC API limit. Batch size is a ceiling; length may force smaller batches.
+    """
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
+    if max_encoded_length < 1:
+        raise ValueError("max_encoded_length must be positive")
     politics = _or_group(POLITICAL_TERMS)
+    places = list(LATIN_AMERICA_PLACES)
     queries: list[tuple[str, str]] = []
-    # Both groups must mention the region; a publisher's location is not article relevance.
-    place_groups = list(_chunks(LATIN_AMERICA_PLACES, 7))
-    for publications, label in ((LATIN_AMERICAN_PUBLICATIONS, "Latin American press"), (INTERNATIONAL_PUBLICATIONS, "international press")):
-        for batch in _chunks(publications, batch_size):
-            domains = _or_group([p.domain for p in batch], "domain:")
-            for places in place_groups:
-                queries.append((f"{domains} {_or_group(places)} {politics}", label))
+    for publications, label in (
+        (LATIN_AMERICAN_PUBLICATIONS, "Latin American press"),
+        (INTERNATIONAL_PUBLICATIONS, "international press"),
+    ):
+        domains = sorted({publication.domain for publication in publications}, key=len)
+        index = 0
+        while index < len(domains):
+            batch = [domains[index]]
+            nxt = index + 1
+            while nxt < len(domains) and len(batch) < batch_size:
+                trial = batch + [domains[nxt]]
+                if _pack_terms(places, [_or_group(trial, "domain:"), politics], max_encoded_length) is None:
+                    break
+                batch = trial
+                nxt += 1
+            place_batches = _pack_terms(places, [_or_group(batch, "domain:"), politics], max_encoded_length)
+            if not place_batches:
+                raise ValueError(f"Query for {batch[0]} cannot fit within the news-index length limit")
+            domain_group = _or_group(batch, "domain:")
+            for place_batch in place_batches:
+                query = f"{domain_group} {_or_group(place_batch)} {politics}"
+                if _encoded_query_length(query) > max_encoded_length:
+                    raise ValueError("Packed query exceeded the news-index length limit")
+                queries.append((query, label))
+            index = nxt
     return queries
 
 
@@ -71,13 +136,108 @@ def _parse_gdelt_date(value: str) -> datetime | None:
 
 def _canonical_url(value: str) -> str:
     parsed = urlparse(value.strip())
-    query = urlencode([(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True)
-                       if not k.lower().startswith("utm_") and k.lower() not in {"fbclid", "gclid"}])
-    return urlunparse((parsed.scheme.lower(), parsed.netloc.lower().removeprefix("www."), parsed.path, parsed.params, query, ""))
+    query = urlencode(sorted(
+        (key, item) for key, item in parse_qsl(parsed.query, keep_blank_values=True)
+        if not key.lower().startswith("utm_") and key.lower() not in TRACKING_PARAMS
+    ))
+    return urlunparse((
+        parsed.scheme.lower(),
+        parsed.netloc.lower().removeprefix("www."),
+        parsed.path,
+        parsed.params,
+        query,
+        "",
+    ))
 
 
 class CollectionError(RuntimeError):
     """Coverage is incomplete; do not publish a successful briefing."""
+
+
+class RateLimited(Exception):
+    """The news index asked the client to slow down."""
+
+
+def split_capped_window(window: CoverageWindow) -> tuple[CoverageWindow, CoverageWindow] | None:
+    """Split a capped window into two covering halves, each at least the API minimum.
+
+    Returns None when the window is already at the minimum duration. Halves overlap
+    when that is the only way to keep both of them long enough; the union always
+    covers the parent.
+    """
+    if window.end - window.start <= MIN_QUERY_TIMESPAN:
+        return None
+    midpoint = window.start + (window.end - window.start) / 2
+    midpoint = midpoint.replace(microsecond=0)
+    left_end = max(midpoint, window.start + MIN_QUERY_TIMESPAN)
+    right_start = min(midpoint, window.end - MIN_QUERY_TIMESPAN)
+    left = CoverageWindow(window.start, left_end, window.hours, window.label)
+    right = CoverageWindow(right_start, window.end, window.hours, window.label)
+    if left.start != window.start or right.end != window.end or left.end < right.start:
+        raise CollectionError("Capped-window split would leave a coverage gap")
+    if (left.end - left.start) >= (window.end - window.start) or (right.end - right.start) >= (window.end - window.start):
+        raise CollectionError("Capped-window split did not shrink the query")
+    if (left.end - left.start) < MIN_QUERY_TIMESPAN or (right.end - right.start) < MIN_QUERY_TIMESPAN:
+        raise CollectionError("Capped-window split is shorter than the news index allows")
+    return left, right
+
+
+def _top_level_groups(query: str) -> list[str]:
+    groups: list[str] = []
+    depth = 0
+    start: int | None = None
+    for index, char in enumerate(query):
+        if char == "(":
+            if depth == 0:
+                start = index
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0 and start is not None:
+                groups.append(query[start:index + 1])
+                start = None
+    return groups
+
+
+def split_query(query: str) -> tuple[str, str] | None:
+    """Split the widest OR group so the union of the halves equals the original query."""
+    groups = _top_level_groups(query)
+    ranked = sorted(range(len(groups)), key=lambda index: groups[index].count(" OR "), reverse=True)
+    for index in ranked:
+        inner = groups[index][1:-1]
+        parts = [part.strip() for part in inner.split(" OR ") if part.strip()]
+        if len(parts) < 2:
+            continue
+        midpoint = len(parts) // 2
+        left_groups = groups.copy()
+        right_groups = groups.copy()
+        left_groups[index] = "(" + " OR ".join(parts[:midpoint]) + ")"
+        right_groups[index] = "(" + " OR ".join(parts[midpoint:]) + ")"
+        return " ".join(left_groups), " ".join(right_groups)
+    return None
+
+
+def _articles_from_response(response: requests.Response) -> list[dict]:
+    raw_text = getattr(response, "text", "")
+    text = raw_text if isinstance(raw_text, str) else ""
+    lowered = text.lower()
+    if response.status_code == 429 or "limit requests to one every" in lowered:
+        raise RateLimited(text[:200] or f"HTTP {response.status_code}")
+    if "too short or too long" in lowered:
+        raise CollectionError("News query was rejected as too short or too long")
+    if "timespan is too short" in lowered:
+        raise CollectionError("News index rejected the query duration as too short")
+    response.raise_for_status()
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise ValueError("Unexpected news-index response") from exc
+    if not isinstance(payload, dict) or (payload and "articles" not in payload):
+        raise ValueError("Unexpected news-index response")
+    articles = payload.get("articles", [])
+    if not isinstance(articles, list):
+        raise ValueError("Invalid article list")
+    return articles
 
 
 def _request_json(session: requests.Session, query: str, window: CoverageWindow, settings: Settings) -> list[dict]:
@@ -90,47 +250,51 @@ def _request_json(session: requests.Session, query: str, window: CoverageWindow,
         "startdatetime": window.start.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "enddatetime": window.end.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"),
     }
+    rate_limits = 0
+    other_errors = 0
     last_error: Exception | None = None
-    for attempt in range(3):
+    while rate_limits < 6 and other_errors < 3:
         try:
             time.sleep(settings.request_delay)
             response = session.get(GDELT_ENDPOINT, params=params, timeout=settings.request_timeout)
-            if response.status_code == 429:
-                wait = max(settings.request_delay, float(response.headers.get("Retry-After", "0") or 0))
-                LOGGER.warning("GDELT rate limit reached; waiting %.2f seconds", wait)
-                last_error = CollectionError("HTTP 429: news index rate limited")
-                time.sleep(wait)
-                continue
-            response.raise_for_status()
-            payload = response.json()
-            if not isinstance(payload, dict) or (payload and "articles" not in payload):
-                raise ValueError("Unexpected news-index response")
-            articles = payload.get("articles", [])
-            if not isinstance(articles, list):
-                raise ValueError("Invalid article list")
+            articles = _articles_from_response(response)
             if len(articles) >= settings.max_records:
-                if window.end - window.start <= timedelta(minutes=15):
-                    raise CollectionError("Result cap reached at minimum 15-minute window; coverage incomplete")
-                midpoint = window.start + (window.end - window.start) / 2
-                midpoint = midpoint.replace(microsecond=0)
-                # DOC API requires at least 15 minutes; overlap short child windows.
-                left_end = max(midpoint, window.start + timedelta(minutes=15))
-                right_start = min(midpoint, window.end - timedelta(minutes=15))
-                left = CoverageWindow(window.start, left_end, window.hours, window.label)
-                right = CoverageWindow(right_start, window.end, window.hours, window.label)
-                return _request_json(session, query, left, settings) + _request_json(session, query, right, settings)
+                split = split_capped_window(window)
+                if split is not None:
+                    left, right = split
+                    LOGGER.info("Result cap reached; splitting %s to %s at %s", window.start, window.end, left.end)
+                    return _request_json(session, query, left, settings) + _request_json(session, query, right, settings)
+                parts = split_query(query)
+                if parts is not None:
+                    LOGGER.info("Result cap reached at minimum duration; splitting the boolean query")
+                    return _request_json(session, parts[0], window, settings) + _request_json(session, parts[1], window, settings)
+                raise CollectionError("Result cap reached and the query cannot be split further; coverage incomplete")
             return articles
-        except (requests.RequestException, ValueError) as exc:
+        except CollectionError:
+            raise
+        except RateLimited as exc:
+            rate_limits += 1
             last_error = exc
-            if attempt < 2:
-                time.sleep(max(settings.request_delay, 2 ** attempt))
-    LOGGER.error("GDELT query failed after 3 attempts: %s", last_error)
-    raise CollectionError(f"News query failed after 3 attempts: {last_error}")
+            try:
+                retry_after = float(response.headers.get("Retry-After", "0") or 0)
+            except (TypeError, ValueError):
+                retry_after = 0
+            wait = max(settings.request_delay, retry_after, float(2 ** rate_limits))
+            LOGGER.warning("GDELT rate limit reached; waiting %.2f seconds", wait)
+            time.sleep(wait)
+        except (requests.RequestException, ValueError) as exc:
+            other_errors += 1
+            last_error = exc
+            if other_errors < 3:
+                time.sleep(max(settings.request_delay, 2 ** other_errors))
+    LOGGER.error("GDELT query failed: %s", last_error)
+    raise CollectionError(f"News query failed after retries: {last_error}")
 
 
 def collect(window: CoverageWindow, settings: Settings) -> list[Headline]:
     session = requests.Session()
     session.headers.update({"User-Agent": settings.user_agent, "Accept": "application/json"})
+    # Keyed only by canonical URL. The same event from two publishers must both remain.
     articles: dict[str, Headline] = {}
     queries = build_queries(settings.source_batch_size)
     LOGGER.info("Running %d source/place queries for a %d-hour window", len(queries), window.hours)
@@ -139,10 +303,13 @@ def collect(window: CoverageWindow, settings: Settings) -> list[Headline]:
         rows = _request_json(session, query, window, settings)
         LOGGER.info("Query %d/%d (%s): %d results", index, len(queries), label, len(rows))
         for row in rows:
-            url = row.get("url", "").strip()
-            title = html.unescape(row.get("title", "").strip())
-            seen_at = _parse_gdelt_date(row.get("seendate", ""))
-            publication = match_publication(row.get("domain", "") or urlparse(url).netloc)
+            url = str(row.get("url", "")).strip()
+            title = html.unescape(str(row.get("title", "")).strip())
+            raw_seen = str(row.get("seendate", "") or "")
+            seen_at = _parse_gdelt_date(raw_seen)
+            publication = match_publication(str(row.get("domain", "") or urlparse(url).netloc))
+            if publication and url and title and raw_seen and seen_at is None:
+                raise CollectionError(f"Unparseable index time for {url}")
             if not url or not title or not seen_at or not publication:
                 continue
             if not (window.start <= seen_at <= window.end):
@@ -156,13 +323,31 @@ def collect(window: CoverageWindow, settings: Settings) -> list[Headline]:
                 market=publication.market,
                 scope=publication.scope,
                 domain=publication.domain,
-                language=row.get("language", ""),
+                language=str(row.get("language", "") or ""),
             ))
 
     headlines = sorted(articles.values(), key=lambda item: (item.seen_at, item.publisher, item.title), reverse=True)
     if settings.enrich_headlines and headlines:
         _enrich_from_original_pages(headlines, settings)
+        headlines = _dedupe_headlines(headlines)
     return headlines
+
+
+def _dedupe_headlines(headlines: list[Headline]) -> list[Headline]:
+    """Collapse identical canonical URLs after enrichment. Distinct publishers stay."""
+    kept: dict[str, Headline] = {}
+    for item in headlines:
+        kept.setdefault(_canonical_url(item.url), item)
+    return sorted(kept.values(), key=lambda item: (item.seen_at, item.publisher, item.title), reverse=True)
+
+
+def _same_publisher_article(headline: Headline, url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if match_publication(parsed.hostname or "") != match_publication(headline.domain):
+        return False
+    return parsed.path not in {"", "/"}
 
 
 def _extract_page_metadata(headline: Headline, settings: Settings) -> tuple[str, str] | None:
@@ -174,7 +359,7 @@ def _extract_page_metadata(headline: Headline, settings: Settings) -> tuple[str,
         canonical = soup.select_one('link[rel="canonical"]')
         title = title_tag.get("content", "").strip() if title_tag else ""
         url = urljoin(response.url, canonical.get("href", "").strip()) if canonical else response.url
-        if urlparse(url).scheme not in {"http", "https"} or match_publication(urlparse(url).hostname or "") != match_publication(headline.domain):
+        if not _same_publisher_article(headline, url):
             url = headline.url
         return title or headline.title, url or headline.url
     except requests.RequestException:

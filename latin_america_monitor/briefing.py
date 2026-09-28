@@ -14,6 +14,12 @@ def _safe(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ").strip()
 
 
+def _md_link(title: str, url: str) -> str:
+    text = _safe(title).replace("[", "\\[").replace("]", "\\]")
+    href = url.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
+    return f"[{text}]({href})"
+
+
 def build_markdown(headlines: list[Headline], window: CoverageWindow, generated_at: datetime) -> str:
     source_count = len({item.domain for item in headlines})
     lines = [
@@ -38,7 +44,7 @@ def build_markdown(headlines: list[Headline], window: CoverageWindow, generated_
         items = groups[group]
         lines += [f"## {group} ({len(items)})", "", "| First indexed (UTC) | Publisher | Headline |", "|---|---|---|"]
         for item in items:
-            lines.append(f"| {item.seen_at:%Y-%m-%d %H:%M} | {_safe(item.publisher)} | [{_safe(item.title)}]({item.url}) |")
+            lines.append(f"| {item.seen_at:%Y-%m-%d %H:%M} | {_safe(item.publisher)} | {_md_link(item.title, item.url)} |")
         lines.append("")
 
     lines += [
