@@ -12,7 +12,7 @@ from .window import CoverageWindow
 
 def _html_body(headlines: list[Headline], window: CoverageWindow) -> str:
     rows = "".join(
-        f'<tr><td>{item.published:%Y-%m-%d %H:%M}</td><td>{escape(item.publisher)}</td>'
+        f'<tr><td>{item.seen_at:%Y-%m-%d %H:%M}</td><td>{escape(item.publisher)}</td>'
         f'<td><a href="{escape(item.url, quote=True)}">{escape(item.title)}</a></td></tr>'
         for item in headlines
     )
@@ -21,7 +21,7 @@ def _html_body(headlines: list[Headline], window: CoverageWindow) -> str:
 <p><strong>Coverage:</strong> {window.start:%Y-%m-%d %H:%M UTC} to {window.end:%Y-%m-%d %H:%M UTC} ({window.label})</p>
 <p><strong>{len(headlines)} headlines</strong>. The attached CSV contains the complete machine-readable list.</p>
 <table cellpadding="7" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px">
-<thead><tr style="background:#17233c;color:white"><th>Published (UTC)</th><th>Publisher</th><th>Headline</th></tr></thead>
+<thead><tr style="background:#17233c;color:white"><th>First indexed (UTC)</th><th>Publisher</th><th>Headline</th></tr></thead>
 <tbody>{rows}</tbody></table>
 </body></html>"""
 
@@ -41,4 +41,3 @@ def send_report(headlines: list[Headline], window: CoverageWindow, markdown_path
         server.login(settings.smtp_user, settings.smtp_password)
         server.send_message(message)
     return True
-

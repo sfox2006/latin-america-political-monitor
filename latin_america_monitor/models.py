@@ -17,7 +17,7 @@ class Headline:
     title: str
     publisher: str
     url: str
-    published: datetime
+    seen_at: datetime
     market: str
     scope: str
     domain: str
@@ -25,6 +25,5 @@ class Headline:
 
     def to_dict(self) -> dict[str, str]:
         data = asdict(self)
-        data["published"] = self.published.isoformat()
+        data["seen_at"] = self.seen_at.isoformat()
         return data
-

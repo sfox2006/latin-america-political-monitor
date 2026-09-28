@@ -15,7 +15,7 @@ def _safe(value: str) -> str:
 
 
 def build_markdown(headlines: list[Headline], window: CoverageWindow, generated_at: datetime) -> str:
-    source_count = len({item.publisher for item in headlines})
+    source_count = len({item.domain for item in headlines})
     lines = [
         f"# Latin America Political Monitor — {generated_at:%d %B %Y}",
         "",
@@ -36,9 +36,9 @@ def build_markdown(headlines: list[Headline], window: CoverageWindow, generated_
     ordered_groups = local_markets + (["International coverage"] if "International coverage" in groups else [])
     for group in ordered_groups:
         items = groups[group]
-        lines += [f"## {group} ({len(items)})", "", "| Published (UTC) | Publisher | Headline |", "|---|---|---|"]
+        lines += [f"## {group} ({len(items)})", "", "| First indexed (UTC) | Publisher | Headline |", "|---|---|---|"]
         for item in items:
-            lines.append(f"| {item.published:%Y-%m-%d %H:%M} | {_safe(item.publisher)} | [{_safe(item.title)}]({item.url}) |")
+            lines.append(f"| {item.seen_at:%Y-%m-%d %H:%M} | {_safe(item.publisher)} | [{_safe(item.title)}]({item.url}) |")
         lines.append("")
 
     lines += [
@@ -59,11 +59,11 @@ def write_outputs(headlines: list[Headline], window: CoverageWindow, output_dir:
     json_path = output_dir / f"latin_america_political_monitor_{stamp}.json"
     md_path.write_text(build_markdown(headlines, window, window.end), encoding="utf-8")
     with csv_path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["published", "publisher", "headline", "original_url", "market", "scope", "domain", "language"])
+        writer = csv.DictWriter(handle, fieldnames=["seen_at", "publisher", "headline", "original_url", "market", "scope", "domain", "language"])
         writer.writeheader()
         for item in headlines:
             writer.writerow({
-                "published": item.published.isoformat(), "publisher": item.publisher, "headline": item.title,
+                "seen_at": item.seen_at.isoformat(), "publisher": item.publisher, "headline": item.title,
                 "original_url": item.url, "market": item.market, "scope": item.scope,
                 "domain": item.domain, "language": item.language,
             })
@@ -74,4 +74,3 @@ def write_outputs(headlines: list[Headline], window: CoverageWindow, output_dir:
 def publisher_summary(headlines: list[Headline]) -> str:
     counts = Counter(item.publisher for item in headlines)
     return ", ".join(f"{name} ({count})" for name, count in counts.most_common(12))
-

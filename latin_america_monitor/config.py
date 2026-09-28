@@ -30,3 +30,9 @@ class Settings:
     smtp_password: str = os.getenv("SMTP_PASSWORD", "")
     email_from: str = os.getenv("EMAIL_FROM", "")
     email_to: tuple[str, ...] = tuple(x.strip() for x in os.getenv("EMAIL_TO", "").split(",") if x.strip())
+
+    def __post_init__(self):
+        if not 1 <= self.max_records <= 250 or self.source_batch_size < 1 or self.request_timeout < 1 or self.enrich_workers < 1:
+            raise ValueError("Invalid query, timeout, or worker settings")
+        if any((self.smtp_user, self.smtp_password, self.email_to)) and not all((self.smtp_host, self.smtp_user, self.smtp_password, self.email_to)):
+            raise ValueError("Incomplete SMTP configuration; configure all email fields or leave email disabled")

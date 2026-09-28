@@ -12,7 +12,7 @@ def test_briefing_contains_headline_publisher_and_original_link():
         title="Congress approves electoral reform",
         publisher="Example Daily",
         url="https://example.com/original-story",
-        published=end - timedelta(hours=1),
+        seen_at=end - timedelta(hours=1),
         market="Mexico",
         scope="latin_america",
         domain="example.com",
@@ -22,4 +22,3 @@ def test_briefing_contains_headline_publisher_and_original_link():
     assert "Example Daily" in report
     assert "https://example.com/original-story" in report
     assert "weekend roundup" in report
-

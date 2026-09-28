@@ -29,9 +29,15 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      - uses: actions/cache/restore@v4
+        if: github.event_name == 'schedule'
+        with:
+          path: state/
+          key: coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: coverage-
       - name: Run monitor
         env:
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
@@ -41,12 +47,20 @@ jobs:
           REQUEST_DELAY_SECONDS: ${{ vars.REQUEST_DELAY_SECONDS || '5.25' }}
           ENRICH_HEADLINES: ${{ vars.ENRICH_HEADLINES || 'false' }}
           LOOKBACK: ${{ inputs.lookback_hours }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ -n "$LOOKBACK" ]; then
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            python main.py --scheduled
+          elif [ -n "$LOOKBACK" ]; then
             python main.py --lookback-hours "$LOOKBACK"
           else
             python main.py
           fi
+      - uses: actions/cache/save@v4
+        if: success() && github.event_name == 'schedule'
+        with:
+          path: state/
+          key: coverage-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Upload complete report
         if: always()
         uses: actions/upload-artifact@v4

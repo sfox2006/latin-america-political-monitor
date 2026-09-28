@@ -5,8 +5,8 @@ import logging
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
-from urllib.parse import urlparse, urlunparse
+from datetime import datetime, timezone, timedelta
+from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode, urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -52,16 +52,13 @@ def build_queries(batch_size: int = 8) -> list[tuple[str, str]]:
     """Return (query, label) pairs for local and international publications."""
     politics = _or_group(POLITICAL_TERMS)
     queries: list[tuple[str, str]] = []
-    for batch in _chunks(LATIN_AMERICAN_PUBLICATIONS, batch_size):
-        domains = _or_group([p.domain for p in batch], "domain:")
-        queries.append((f"{domains} {politics}", "Latin American press"))
-
-    # International coverage is split by both publisher and place to avoid API result truncation.
+    # Both groups must mention the region; a publisher's location is not article relevance.
     place_groups = list(_chunks(LATIN_AMERICA_PLACES, 7))
-    for batch in _chunks(INTERNATIONAL_PUBLICATIONS, batch_size):
-        domains = _or_group([p.domain for p in batch], "domain:")
-        for places in place_groups:
-            queries.append((f"{domains} {_or_group(places)} {politics}", "international press"))
+    for publications, label in ((LATIN_AMERICAN_PUBLICATIONS, "Latin American press"), (INTERNATIONAL_PUBLICATIONS, "international press")):
+        for batch in _chunks(publications, batch_size):
+            domains = _or_group([p.domain for p in batch], "domain:")
+            for places in place_groups:
+                queries.append((f"{domains} {_or_group(places)} {politics}", label))
     return queries
 
 
@@ -74,7 +71,13 @@ def _parse_gdelt_date(value: str) -> datetime | None:
 
 def _canonical_url(value: str) -> str:
     parsed = urlparse(value.strip())
-    return urlunparse((parsed.scheme.lower(), parsed.netloc.lower().removeprefix("www."), parsed.path.rstrip("/"), "", "", ""))
+    query = urlencode([(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True)
+                       if not k.lower().startswith("utm_") and k.lower() not in {"fbclid", "gclid"}])
+    return urlunparse((parsed.scheme.lower(), parsed.netloc.lower().removeprefix("www."), parsed.path, parsed.params, query, ""))
+
+
+class CollectionError(RuntimeError):
+    """Coverage is incomplete; do not publish a successful briefing."""
 
 
 def _request_json(session: requests.Session, query: str, window: CoverageWindow, settings: Settings) -> list[dict]:
@@ -90,24 +93,36 @@ def _request_json(session: requests.Session, query: str, window: CoverageWindow,
     last_error: Exception | None = None
     for attempt in range(3):
         try:
+            time.sleep(settings.request_delay)
             response = session.get(GDELT_ENDPOINT, params=params, timeout=settings.request_timeout)
             if response.status_code == 429:
                 wait = max(settings.request_delay, float(response.headers.get("Retry-After", "0") or 0))
                 LOGGER.warning("GDELT rate limit reached; waiting %.2f seconds", wait)
+                last_error = CollectionError("HTTP 429: news index rate limited")
                 time.sleep(wait)
                 continue
             response.raise_for_status()
             payload = response.json()
+            if not isinstance(payload, dict) or (payload and "articles" not in payload):
+                raise ValueError("Unexpected news-index response")
             articles = payload.get("articles", [])
+            if not isinstance(articles, list):
+                raise ValueError("Invalid article list")
             if len(articles) >= settings.max_records:
-                LOGGER.warning("Query reached the %d-result API cap and may be incomplete", settings.max_records)
+                if window.end - window.start <= timedelta(minutes=15):
+                    raise CollectionError("Result cap reached at minimum 15-minute window; coverage incomplete")
+                midpoint = window.start + (window.end - window.start) / 2
+                midpoint = midpoint.replace(microsecond=0)
+                left = CoverageWindow(window.start, midpoint, window.hours, window.label)
+                right = CoverageWindow(midpoint, window.end, window.hours, window.label)
+                return _request_json(session, query, left, settings) + _request_json(session, query, right, settings)
             return articles
         except (requests.RequestException, ValueError) as exc:
             last_error = exc
             if attempt < 2:
                 time.sleep(max(settings.request_delay, 2 ** attempt))
     LOGGER.error("GDELT query failed after 3 attempts: %s", last_error)
-    return []
+    raise CollectionError(f"News query failed after 3 attempts: {last_error}")
 
 
 def collect(window: CoverageWindow, settings: Settings) -> list[Headline]:
@@ -123,26 +138,25 @@ def collect(window: CoverageWindow, settings: Settings) -> list[Headline]:
         for row in rows:
             url = row.get("url", "").strip()
             title = html.unescape(row.get("title", "").strip())
-            published = _parse_gdelt_date(row.get("seendate", ""))
+            seen_at = _parse_gdelt_date(row.get("seendate", ""))
             publication = match_publication(row.get("domain", "") or urlparse(url).netloc)
-            if not url or not title or not published or not publication:
+            if not url or not title or not seen_at or not publication:
                 continue
-            if not (window.start <= published <= window.end):
+            if not (window.start <= seen_at <= window.end):
                 continue
             key = _canonical_url(url)
             articles.setdefault(key, Headline(
                 title=re.sub(r"\s+", " ", title),
                 publisher=publication.name,
                 url=url,
-                published=published,
+                seen_at=seen_at,
                 market=publication.market,
                 scope=publication.scope,
                 domain=publication.domain,
                 language=row.get("language", ""),
             ))
-        time.sleep(settings.request_delay)
 
-    headlines = sorted(articles.values(), key=lambda item: (item.published, item.publisher, item.title), reverse=True)
+    headlines = sorted(articles.values(), key=lambda item: (item.seen_at, item.publisher, item.title), reverse=True)
     if settings.enrich_headlines and headlines:
         _enrich_from_original_pages(headlines, settings)
     return headlines
@@ -156,7 +170,9 @@ def _extract_page_metadata(headline: Headline, settings: Settings) -> tuple[str,
         title_tag = soup.select_one('meta[property="og:title"]') or soup.select_one('meta[name="twitter:title"]')
         canonical = soup.select_one('link[rel="canonical"]')
         title = title_tag.get("content", "").strip() if title_tag else ""
-        url = canonical.get("href", "").strip() if canonical else response.url
+        url = urljoin(response.url, canonical.get("href", "").strip()) if canonical else response.url
+        if urlparse(url).scheme not in {"http", "https"} or match_publication(urlparse(url).hostname or "") != match_publication(headline.domain):
+            url = headline.url
         return title or headline.title, url or headline.url
     except requests.RequestException:
         return None
