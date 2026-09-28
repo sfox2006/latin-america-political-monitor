@@ -126,14 +126,39 @@ def test_failed_day_recovered(tmp_path):
     assert "recovered 48 hours" in wednesday.label
 
 
+class _FrozenNow(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return NOW
+
+
 def test_failure_does_not_send_or_advance_state(tmp_path):
     state = tmp_path / "state"
     state.write_text(NOW.isoformat())
-    with patch.object(cli, "Settings", return_value=Settings(output_dir=tmp_path)), patch.object(cli, "collect", side_effect=collector.CollectionError("unavailable")), patch.object(cli, "send_report") as send:
-        assert cli.main(["--state-file", str(state)]) == 1
+    with patch.object(cli, "datetime", _FrozenNow), patch.object(cli, "Settings", return_value=Settings(timezone="Pacific/Kiritimati", output_dir=tmp_path)), patch.object(cli, "collect", side_effect=collector.CollectionError("unavailable")), patch.object(cli, "send_report") as send:
+        assert cli.main(["--scheduled", "--state-file", str(state)]) == 1
     send.assert_not_called()
     assert state.read_text() == NOW.isoformat()
     assert '"status": "failed"' in (tmp_path / "failure.json").read_text()
+
+
+def test_scheduled_success_advances_state_and_ignores_monitor_timezone(tmp_path):
+    state = tmp_path / "state"
+    captured = {}
+
+    def fake_collect(window, settings):
+        captured["window"] = window
+        captured["timezone"] = settings.timezone
+        return [Headline("Election result", "G1", "https://g1.globo.com/story", NOW - timedelta(hours=1), "Brazil", "latin_america", "g1.globo.com")]
+
+    with patch.object(cli, "datetime", _FrozenNow), patch.object(cli, "Settings", return_value=Settings(timezone="Pacific/Kiritimati", output_dir=tmp_path)), patch.object(cli, "collect", side_effect=fake_collect), patch.object(cli, "send_report", return_value=True) as send:
+        assert cli.main(["--scheduled", "--state-file", str(state)]) == 0
+    send.assert_called_once()
+    assert captured["timezone"] == "Pacific/Kiritimati"
+    assert captured["window"].hours == 72
+    assert captured["window"].label == "weekend roundup"
+    assert captured["window"].end == NOW
+    assert state.read_text(encoding="utf-8") == NOW.isoformat()
 
 
 def test_reports_identify_index_time(tmp_path):

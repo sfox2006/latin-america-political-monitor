@@ -10,9 +10,15 @@ A weekday political-headline monitor modelled on `diesel-policy-monitor`. It sca
 
 The scheduled GitHub Action runs Monday-Friday at **11:00 UTC**. Monday covers the previous **72 hours** (Friday 11:00 UTC through Monday 11:00 UTC). Tuesday-Friday cover the previous **24 hours**, so weekday windows meet without a gap. A delayed job anchors to the most recent 11:00 UTC boundary instead of moving the window forward.
 
+## Timezone
+
+Scheduled runs (`python main.py --scheduled`, including the weekday GitHub Action) decide Monday in **UTC**. `scheduled_window` calls `coverage_window(end, "UTC")`. They do not read `MONITOR_TIMEZONE`, and they are not interpreted in `America/New_York`.
+
+Manual runs (`python main.py` without `--scheduled`) use `MONITOR_TIMEZONE` (default `America/New_York`) only to decide whether the local calendar day is Monday. Monday in that timezone uses 72 hours; Tuesday–Friday use 24 hours. A manual run can therefore disagree with a scheduled run near a timezone boundary: 11:00 UTC Monday is still Sunday in `Etc/GMT+12` and already Tuesday in `Pacific/Kiritimati`, but the scheduled job still uses the UTC Monday weekend window.
+
 ## Coverage
 
-The curated catalogue contains **91 outlets total: 65 regional outlets across 21 Latin American/Caribbean markets and 26 international outlets**. This is an editable watchlist, not a verified ranking or an exhaustive list of every popular newspaper. The complete catalogue is in [`latin_america_monitor/sources.py`](latin_america_monitor/sources.py).
+The curated catalogue contains **92 outlets total: 66 regional outlets across 21 Latin American/Caribbean markets and 26 international outlets**. Brazil includes both O Globo (`oglobo.globo.com`) and G1 (`g1.globo.com`). This is an editable watchlist, not a verified ranking or an exhaustive list of every popular newspaper. The complete catalogue is in [`latin_america_monitor/sources.py`](latin_america_monitor/sources.py).
 
 Discovery uses the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) and filters results back to the catalogue. GDELT provides direct publisher URLs. As with any news index, inaccessible or unindexed articles can be missed; the report deliberately states this instead of claiming mathematically complete internet coverage.
 
@@ -56,7 +62,7 @@ Optional repository variables:
 
 | Variable | Default | Purpose |
 |---|---:|---|
-| `MONITOR_TIMEZONE` | `America/New_York` | Determines Monday for manual runs; scheduled runs use their fixed UTC boundary |
+| `MONITOR_TIMEZONE` | `America/New_York` | Monday detection for manual runs only. Scheduled runs always use UTC |
 | `REQUEST_DELAY_SECONDS` | `5.25` | Pause between GDELT queries; clamped to at least 5.1 seconds to respect the API limit |
 | `ENRICH_HEADLINES` | `false` | Fetch original pages to refresh titles and canonical links; slower and some publishers block it |
 

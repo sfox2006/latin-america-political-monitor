@@ -65,3 +65,31 @@ def test_slightly_early_start_keeps_todays_boundary(tmp_path):
     assert window.end == MONDAY
     assert window.hours == 72
 
+
+def test_scheduled_monday_stays_utc_when_monitor_timezone_is_not_monday(tmp_path):
+    """11:00 UTC Monday is still Sunday far west and already Tuesday far east."""
+    scheduled = scheduled_window(MONDAY, tmp_path / "missing")
+    assert scheduled.hours == 72
+    assert scheduled.label == "weekend roundup"
+    assert scheduled.start == MONDAY - timedelta(hours=72)
+    assert scheduled.end == MONDAY
+
+    still_sunday = coverage_window(MONDAY, "Etc/GMT+12")
+    assert still_sunday.hours == 24
+    assert still_sunday.label == "last 24 hours"
+
+    already_tuesday = coverage_window(MONDAY, "Pacific/Kiritimati")
+    assert already_tuesday.hours == 24
+    assert already_tuesday.label == "last 24 hours"
+
+
+def test_manual_window_uses_monitor_timezone_for_monday():
+    sunday_evening_in_new_york = datetime(2026, 9, 28, 3, tzinfo=timezone.utc)
+    manual_sunday = coverage_window(sunday_evening_in_new_york, "America/New_York")
+    assert manual_sunday.hours == 24
+
+    monday_morning_in_new_york = datetime(2026, 9, 28, 12, tzinfo=timezone.utc)
+    manual_monday = coverage_window(monday_morning_in_new_york, "America/New_York")
+    assert manual_monday.hours == 72
+    assert manual_monday.label == "weekend roundup"
+

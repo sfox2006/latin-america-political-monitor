@@ -24,6 +24,20 @@ def test_matches_subdomains():
     assert publication.market == "Uruguay"
 
 
+def test_matches_g1_including_www():
+    publication = match_publication("g1.globo.com")
+    assert publication is not None
+    assert publication.name == "G1"
+    assert publication.domain == "g1.globo.com"
+    assert publication.market == "Brazil"
+    assert publication.scope == "latin_america"
+    www = match_publication("www.g1.globo.com")
+    assert www is not None
+    assert www.name == "G1"
+    assert match_publication("oglobo.globo.com").name == "O Globo"
+    assert match_publication("valor.globo.com").name == "Valor Econômico"
+
+
 def test_queries_cover_both_scopes():
     queries = build_queries(8)
     labels = {label for _, label in queries}
