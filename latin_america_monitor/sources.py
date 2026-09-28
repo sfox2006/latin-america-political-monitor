@@ -20,6 +20,7 @@ LATIN_AMERICAN_PUBLICATIONS = [
     _p("Los Tiempos", "lostiempos.com", "Bolivia"),
     _p("Folha de S.Paulo", "folha.uol.com.br", "Brazil"),
     _p("O Globo", "oglobo.globo.com", "Brazil"),
+    _p("G1", "g1.globo.com", "Brazil"),
     _p("O Estado de S. Paulo", "estadao.com.br", "Brazil"),
     _p("Valor Econômico", "valor.globo.com", "Brazil"),
     _p("Correio Braziliense", "correiobraziliense.com.br", "Brazil"),

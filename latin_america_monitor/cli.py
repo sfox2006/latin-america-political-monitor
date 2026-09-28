@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 import logging
 import json
-from datetime import datetime, timezone
+import math
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .briefing import publisher_summary, write_outputs
@@ -13,20 +14,34 @@ from .emailer import send_report
 from .window import coverage_window, CoverageWindow
 
 
+def scheduled_end(now: datetime) -> datetime:
+    """Anchor a scheduled run to 11:00 UTC without opening a gap when the job starts late.
+
+    A start up to 10 minutes early still uses today's boundary. Anything earlier is a
+    delayed run from the previous boundary, so Monday's weekend window is preserved
+    if that job starts after midnight.
+    """
+    current = now.astimezone(timezone.utc)
+    end = current.replace(hour=11, minute=0, second=0, microsecond=0)
+    if current >= end or end - current <= timedelta(minutes=10):
+        return end
+    return end - timedelta(days=1)
+
+
 def scheduled_window(now: datetime, state_path: Path) -> CoverageWindow:
     # The schedule is fixed in UTC. Queue delays must not move the boundaries.
-    end = now.astimezone(timezone.utc).replace(hour=11, minute=0, second=0, microsecond=0)
-    if end > now:
-        raise ValueError("Scheduled run started before its 11:00 UTC boundary")
+    end = scheduled_end(now)
     window = coverage_window(end, "UTC")
     if state_path.exists():
         previous = datetime.fromisoformat(state_path.read_text(encoding="utf-8").strip())
         if previous.tzinfo is None or previous > end:
             raise ValueError("Invalid previous successful coverage boundary")
         if previous < window.start:
-            if (end - previous).days >= 90:
+            gap = end - previous
+            if gap > timedelta(hours=24 * 90):
                 raise ValueError("Recovery exceeds news-index history; manual recovery required")
-            window = CoverageWindow(previous, end, window.hours, window.label + " plus missed-run recovery")
+            hours = max(1, math.ceil(gap.total_seconds() / 3600))
+            window = CoverageWindow(previous, end, hours, f"recovered {hours} hours through {end:%Y-%m-%d %H:%M UTC}")
     return window
 
 
