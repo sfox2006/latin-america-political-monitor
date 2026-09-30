@@ -5,6 +5,7 @@ import pytest
 
 from latin_america_monitor import collector, cli
 from latin_america_monitor.config import Settings
+from latin_america_monitor.relations import place_terms
 from latin_america_monitor.window import coverage_window
 from latin_america_monitor.briefing import write_outputs
 from latin_america_monitor.models import Headline
@@ -105,9 +106,12 @@ def test_plain_text_rejection_is_not_empty_news():
     assert session.get.call_count == 1
 
 
-def test_all_queries_require_region():
-    for query, _ in collector.build_queries():
-        assert any(place in query for place in collector.LATIN_AMERICA_PLACES)
+def test_international_queries_name_a_latin_american_place():
+    places = place_terms()
+    for query, label in collector.build_queries():
+        assert "domain:" in query
+        if label == "international press":
+            assert any(place in query for place in places)
 
 
 def test_delayed_schedule_has_no_gap(tmp_path):
@@ -140,6 +144,7 @@ def test_failure_does_not_send_or_advance_state(tmp_path):
     send.assert_not_called()
     assert state.read_text() == NOW.isoformat()
     assert '"status": "failed"' in (tmp_path / "failure.json").read_text()
+    assert list(tmp_path.glob("*.md")) == []
 
 
 def test_scheduled_success_advances_state_and_ignores_monitor_timezone(tmp_path):
@@ -149,7 +154,7 @@ def test_scheduled_success_advances_state_and_ignores_monitor_timezone(tmp_path)
     def fake_collect(window, settings):
         captured["window"] = window
         captured["timezone"] = settings.timezone
-        return [Headline("Election result", "G1", "https://g1.globo.com/story", NOW - timedelta(hours=1), "Brazil", "latin_america", "g1.globo.com")]
+        return [Headline("Mexico and Brazil sign a treaty", "G1", "https://g1.globo.com/story", NOW - timedelta(hours=1), "Brazil", "latin_america", "g1.globo.com")]
 
     with patch.object(cli, "datetime", _FrozenNow), patch.object(cli, "Settings", return_value=Settings(timezone="Pacific/Kiritimati", output_dir=tmp_path)), patch.object(cli, "collect", side_effect=fake_collect), patch.object(cli, "send_report", return_value=True) as send:
         assert cli.main(["--scheduled", "--state-file", str(state)]) == 0
@@ -159,15 +164,24 @@ def test_scheduled_success_advances_state_and_ignores_monitor_timezone(tmp_path)
     assert captured["window"].label == "weekend roundup"
     assert captured["window"].end == NOW
     assert state.read_text(encoding="utf-8") == NOW.isoformat()
+    report = next(tmp_path.glob("*.md")).read_text(encoding="utf-8")
+    assert "G1: Mexico and Brazil sign a treaty" in report
+    assert "https://g1.globo.com/story" in report
+    assert "Results:" not in report
+    assert list(tmp_path.glob("*.csv")) == []
+    assert list(tmp_path.glob("*.json")) == []
 
 
-def test_reports_identify_index_time(tmp_path):
-    item = Headline("Election result", "Daily", "https://example.com/a", NOW, "Mexico", "latin_america", "example.com")
-    md, csv, js = write_outputs([item], coverage_window(NOW), tmp_path)
-    assert "First indexed (UTC)" in md.read_text(encoding="utf-8")
-    assert "seen_at" in csv.read_text(encoding="utf-8-sig")
-    assert '"seen_at"' in js.read_text(encoding="utf-8")
-    assert '"published"' not in js.read_text(encoding="utf-8")
+def test_report_is_publisher_headline_and_link(tmp_path):
+    item = Headline("Mexico and Brazil sign a treaty", "Daily", "https://example.com/a", NOW, "Mexico", "latin_america", "example.com")
+    path = write_outputs([item], coverage_window(NOW), tmp_path)
+    text = path.read_text(encoding="utf-8")
+    assert path.suffix == ".md"
+    assert "Daily: Mexico and Brazil sign a treaty" in text
+    assert "https://example.com/a" in text
+    assert "First indexed" not in text
+    assert list(tmp_path.glob("*.csv")) == []
+    assert list(tmp_path.glob("*.json")) == []
 
 
 def test_invalid_lookback_rejected():
@@ -177,10 +191,10 @@ def test_invalid_lookback_rejected():
 
 def test_cross_publisher_titles_are_kept_and_tracking_urls_collapse(monkeypatch):
     rows = [
-        {"url": "https://www.clarin.com/story?id=1&utm_source=gdelt", "title": "Reform passes", "seendate": "20260928T100000Z", "domain": "clarin.com", "language": "Spanish"},
-        {"url": "https://clarin.com/story?utm_medium=email&id=1", "title": "Reform passes", "seendate": "20260928T100000Z", "domain": "clarin.com", "language": "Spanish"},
-        {"url": "https://www.reuters.com/world/reform?id=9", "title": "Reform passes", "seendate": "20260928T100500Z", "domain": "reuters.com", "language": "English"},
-        {"url": "https://www.reuters.com/world/other?id=10", "title": "Reform passes", "seendate": "20260928T090000Z", "domain": "reuters.com", "language": "English"},
+        {"url": "https://www.clarin.com/story?id=1&utm_source=gdelt", "title": "Mexico and Brazil sign a treaty", "seendate": "20260928T100000Z", "domain": "clarin.com", "language": "Spanish"},
+        {"url": "https://clarin.com/story?utm_medium=email&id=1", "title": "Mexico and Brazil sign a treaty", "seendate": "20260928T100000Z", "domain": "clarin.com", "language": "Spanish"},
+        {"url": "https://www.reuters.com/world/reform?id=9", "title": "Mexico and Brazil sign a treaty", "seendate": "20260928T100500Z", "domain": "reuters.com", "language": "English"},
+        {"url": "https://www.reuters.com/world/other?id=10", "title": "Argentina and China sign a treaty", "seendate": "20260928T090000Z", "domain": "reuters.com", "language": "English"},
     ]
     monkeypatch.setattr(collector, "_request_json", lambda *args, **kwargs: rows)
     monkeypatch.setattr(collector, "build_queries", lambda *args, **kwargs: [("q", "Latin American press")])

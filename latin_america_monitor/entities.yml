@@ -1,0 +1,648 @@
+# Countries, leaders, and international-relations terms for headline filtering.
+# Matching is accent- and case-insensitive, with word boundaries. Short
+# abbreviations that are also everyday words (EU/UE, US, UN, UK) are listed
+# under abbreviations and are matched only as uppercase tokens, plus a few
+# safe phrases such as "la ue".
+#
+# verified: false means the office is not confirmed. LAPM Sources is checking
+# leaders separately; correct this file rather than the matcher.
+#
+# Georgia is masked (stop_phrases) because the US state and the country share
+# the bare name. Nuevo México / New Mexico and the Panama Papers are masked
+# so they do not count as Mexico or Panama.
+
+stop_phrases:
+  - "Nuevo México"
+  - "New Mexico"
+  - "New Mexican"
+  - "Nuevo mexicano"
+  - "Panama Papers"
+  - "Papeles de Panamá"
+  - "Georgia"
+
+# English tokens folded into GDELT queries. Headline matching does not read this
+# list; it is the recall net for the index, which searches machine-translated
+# English. Keep it narrower than the headline aliases.
+# High-signal English tokens for the GDELT recall net. This is intentionally
+# narrower than the headline aliases: the index query has a hard length cap,
+# and a wider list multiplies into hundreds of extra requests. Headline
+# matching still understands the full alias lists below.
+gdelt_terms:
+  - sanctions
+  - tariff
+  - tariffs
+  - visa
+  - visas
+  - ambassador
+  - diplomatic
+  - treaty
+  - extradition
+  - deportation
+  - summit
+  - OAS
+  - IMF
+  - CELAC
+  - Mercosur
+  - BRICS
+  - NATO
+  - embargo
+  - bilateral
+  - China
+  - Russia
+  - France
+  - Germany
+  - Spain
+  - Iran
+  - Israel
+  - Ukraine
+  - EU
+  - "United States"
+  - "United Kingdom"
+  - "United Nations"
+  - "European Union"
+
+# Pan-regional phrases. They satisfy "a Latin American entity" but do not pair
+# with a specific country to make Tier 1, and they are not a home market.
+regional:
+  display: "AMÉRICA LATINA"
+  region: americas
+  gdelt:
+    - "Latin America"
+  aliases:
+    - "Latin America"
+    - "América Latina"
+    - "America Latina"
+    - Latinoamérica
+    - Latinoamerica
+    - Latam
+    - "South America"
+    - Sudamérica
+    - Sudamerica
+    - "América del Sur"
+    - "Central America"
+    - Centroamérica
+    - Centroamerica
+    - "América Central"
+    - Caribe
+    - Caribbean
+    - "the Caribbean"
+
+regions:
+  - id: americas
+    display: "AMÉRICA LATINA"
+    order: 0
+  - id: north_america
+    display: "NORTEAMÉRICA"
+    order: 1
+  - id: central_america_caribbean
+    display: "CENTROAMÉRICA + CARIBE"
+    order: 2
+  - id: south_america
+    display: "SUDAMÉRICA"
+    order: 3
+
+latin_america:
+  - id: mexico
+    display: "MÉXICO"
+    region: north_america
+    market: Mexico
+    order: 10
+    query_names: ["Mexico", "México"]
+    aliases:
+      - Mexico
+      - México
+      - Mexique
+      - mexicano
+      - mexicana
+      - mexicanos
+      - mexicanas
+      - mexican
+      - mexicans
+      - mexicain
+      - mexicaine
+      - "Estados Unidos Mexicanos"
+      - "United Mexican States"
+    leaders:
+      - name: "Claudia Sheinbaum"
+        role: president
+        verified: false
+        aliases: ["Sheinbaum", "Claudia Sheinbaum"]
+
+  - id: guatemala
+    display: "GUATEMALA"
+    region: central_america_caribbean
+    market: Guatemala
+    order: 10
+    query_names: ["Guatemala"]
+    aliases: [Guatemala, guatemalteco, guatemalteca, guatemaltecos, guatemalan]
+    leaders:
+      - name: "Bernardo Arévalo"
+        role: president
+        verified: false
+        aliases: ["Bernardo Arévalo", "Arévalo"]
+
+  - id: belize
+    display: "BELICE"
+    region: central_america_caribbean
+    market: Belize
+    order: 20
+    query_names: ["Belize"]
+    aliases: [Belize, Belice, beliceño, beliceña, belizean]
+
+  - id: el_salvador
+    display: "EL SALVADOR"
+    region: central_america_caribbean
+    market: "El Salvador"
+    order: 30
+    query_names: ["El Salvador"]
+    aliases:
+      - "El Salvador"
+      - salvadoreño
+      - salvadoreña
+      - salvadoreños
+      - salvadoran
+      - salvadorien
+    leaders:
+      - name: "Nayib Bukele"
+        role: president
+        verified: true
+        aliases: ["Bukele", "Nayib Bukele"]
+
+  - id: honduras
+    display: "HONDURAS"
+    region: central_america_caribbean
+    market: Honduras
+    order: 40
+    query_names: ["Honduras"]
+    aliases: [Honduras, hondureño, hondureña, hondureños, honduran]
+    leaders:
+      - name: "Xiomara Castro"
+        role: president
+        verified: false
+        aliases: ["Xiomara Castro"]
+
+  - id: nicaragua
+    display: "NICARAGUA"
+    region: central_america_caribbean
+    market: Nicaragua
+    order: 50
+    query_names: ["Nicaragua"]
+    aliases: [Nicaragua, nicaragüense, nicaragüenses, nicaraguan]
+    leaders:
+      - name: "Daniel Ortega"
+        role: president
+        verified: true
+        aliases: ["Daniel Ortega"]
+      - name: "Rosario Murillo"
+        role: co-president
+        verified: false
+        aliases: ["Rosario Murillo"]
+
+  - id: costa_rica
+    display: "COSTA RICA"
+    region: central_america_caribbean
+    market: "Costa Rica"
+    order: 60
+    query_names: ["Costa Rica"]
+    aliases: ["Costa Rica", costarricense, costarricenses]
+    leaders:
+      - name: "Rodrigo Chaves"
+        role: president
+        verified: false
+        aliases: ["Rodrigo Chaves"]
+
+  - id: panama
+    display: "PANAMÁ"
+    region: central_america_caribbean
+    market: Panama
+    order: 70
+    query_names: ["Panama", "Panamá"]
+    aliases: [Panama, Panamá, panameño, panameña, panameños, panamanian]
+    leaders:
+      - name: "José Raúl Mulino"
+        role: president
+        verified: false
+        aliases: ["Mulino", "José Raúl Mulino"]
+
+  - id: cuba
+    display: "CUBA"
+    region: central_america_caribbean
+    market: Cuba
+    order: 80
+    query_names: ["Cuba"]
+    aliases: [Cuba, cubano, cubana, cubanos, cuban, cubain]
+    leaders:
+      - name: "Miguel Díaz-Canel"
+        role: president
+        verified: true
+        aliases: ["Díaz-Canel", "Miguel Díaz-Canel"]
+
+  - id: haiti
+    display: "HAITÍ"
+    region: central_america_caribbean
+    market: Haiti
+    order: 90
+    query_names: ["Haiti"]
+    aliases: [Haiti, Haïti, haitiano, haitiana, haitianos, haitian, haïtien]
+
+  - id: dominican_republic
+    display: "REPÚBLICA DOMINICANA"
+    region: central_america_caribbean
+    market: "Dominican Republic"
+    order: 100
+    query_names: ["Dominican Republic"]
+    aliases:
+      - "Dominican Republic"
+      - "República Dominicana"
+      - dominicano
+      - dominicana
+      - dominicanos
+      - dominican
+    leaders:
+      - name: "Luis Abinader"
+        role: president
+        verified: false
+        aliases: ["Abinader", "Luis Abinader"]
+
+  - id: puerto_rico
+    display: "PUERTO RICO"
+    region: central_america_caribbean
+    market: "Puerto Rico"
+    order: 110
+    query_names: ["Puerto Rico"]
+    aliases: ["Puerto Rico", "Porto Rico", puertorriqueño, puertorriqueña, puertorriqueños]
+
+  - id: colombia
+    display: "COLOMBIA"
+    region: south_america
+    market: Colombia
+    order: 10
+    query_names: ["Colombia"]
+    aliases: [Colombia, Colombie, colombiano, colombiana, colombianos, colombian]
+    leaders:
+      - name: "Abelardo de la Espriella"
+        role: president
+        verified: false
+        aliases: ["De la Espriella", "Abelardo de la Espriella", "Abelardo"]
+      - name: "Gustavo Petro"
+        role: president
+        verified: false
+        aliases: ["Petro", "Gustavo Petro"]
+
+  - id: venezuela
+    display: "VENEZUELA"
+    region: south_america
+    market: Venezuela
+    order: 20
+    query_names: ["Venezuela"]
+    aliases: [Venezuela, venezolano, venezolana, venezolanos, venezuelan, vénézuélien]
+    leaders:
+      - name: "Delcy Rodríguez"
+        role: executive
+        verified: false
+        aliases: ["Delcy", "Delcy Rodríguez"]
+      - name: "Nicolás Maduro"
+        role: president
+        verified: false
+        aliases: ["Maduro", "Nicolás Maduro"]
+      - name: "María Corina Machado"
+        role: opposition leader
+        verified: false
+        aliases: ["María Corina Machado", "María Corina"]
+      - name: "Diosdado Cabello"
+        role: interior minister
+        verified: false
+        aliases: ["Diosdado Cabello", "Diosdado"]
+
+  - id: ecuador
+    display: "ECUADOR"
+    region: south_america
+    market: Ecuador
+    order: 30
+    query_names: ["Ecuador"]
+    aliases: [Ecuador, Equateur, Equador, ecuatoriano, ecuatoriana, ecuatorianos, equatoriano, ecuadorian]
+    leaders:
+      - name: "Daniel Noboa"
+        role: president
+        verified: false
+        aliases: ["Noboa", "Daniel Noboa"]
+
+  - id: peru
+    display: "PERÚ"
+    region: south_america
+    market: Peru
+    order: 40
+    query_names: ["Peru", "Perú"]
+    aliases: [Peru, Perú, Pérou, peruano, peruana, peruanos, peruvian, péruvien]
+    leaders:
+      - name: "Keiko Fujimori"
+        role: president
+        verified: false
+        aliases: ["Keiko Fujimori", "Fujimori"]
+
+  - id: bolivia
+    display: "BOLIVIA"
+    region: south_america
+    market: Bolivia
+    order: 50
+    query_names: ["Bolivia"]
+    aliases: [Bolivia, Bolivie, boliviano, boliviana, bolivianos, bolivian]
+    leaders:
+      - name: "Luis Arce"
+        role: president
+        verified: false
+        aliases: ["Luis Arce"]
+
+  - id: chile
+    display: "CHILE"
+    region: south_america
+    market: Chile
+    order: 60
+    query_names: ["Chile"]
+    aliases: [Chile, Chili, chileno, chilena, chilenos, chilean, chilien]
+    leaders:
+      - name: "José Antonio Kast"
+        role: president
+        verified: false
+        aliases: ["Kast", "José Antonio Kast"]
+      - name: "Gabriel Boric"
+        role: president
+        verified: false
+        aliases: ["Boric", "Gabriel Boric"]
+
+  - id: argentina
+    display: "ARGENTINA"
+    region: south_america
+    market: Argentina
+    order: 70
+    query_names: ["Argentina"]
+    aliases: [Argentina, Argentine, argentino, argentina, argentinos, argentinian, argentin]
+    leaders:
+      - name: "Javier Milei"
+        role: president
+        verified: true
+        gdelt: Milei
+        aliases: ["Milei", "Javier Milei"]
+
+  - id: uruguay
+    display: "URUGUAY"
+    region: south_america
+    market: Uruguay
+    order: 80
+    query_names: ["Uruguay"]
+    aliases: [Uruguay, Uruguai, uruguayo, uruguaya, uruguayos, uruguayan]
+    leaders:
+      - name: "Yamandú Orsi"
+        role: president
+        verified: false
+        aliases: ["Orsi", "Yamandú Orsi"]
+
+  - id: paraguay
+    display: "PARAGUAY"
+    region: south_america
+    market: Paraguay
+    order: 90
+    query_names: ["Paraguay"]
+    aliases: [Paraguay, Paraguai, paraguayo, paraguaya, paraguayos, paraguayan]
+    leaders:
+      - name: "Santiago Peña"
+        role: president
+        verified: false
+        aliases: ["Santiago Peña"]
+
+  - id: brazil
+    display: "BRASIL"
+    region: south_america
+    market: Brazil
+    order: 100
+    query_names: ["Brazil", "Brasil"]
+    aliases:
+      - Brazil
+      - Brasil
+      - Brésil
+      - brasileño
+      - brasileña
+      - brasileños
+      - brasileiro
+      - brasileira
+      - brasileiros
+      - brazilian
+      - brésilien
+    leaders:
+      - name: "Luiz Inácio Lula da Silva"
+        role: president
+        verified: true
+        gdelt: Lula
+        aliases: ["Lula", "Lula da Silva", "Luiz Inácio Lula da Silva"]
+
+  - id: guyana
+    display: "GUYANA"
+    region: south_america
+    market: Guyana
+    order: 110
+    query_names: ["Guyana"]
+    aliases: [Guyana, guyanés, guyanesa, guyanese]
+
+  - id: suriname
+    display: "SURINAM"
+    region: south_america
+    market: Suriname
+    order: 120
+    query_names: ["Suriname"]
+    aliases: [Suriname, Surinam, surinamés]
+
+foreign:
+  - id: united_states
+    aliases:
+      - "United States"
+      - "Estados Unidos"
+      - "États-Unis"
+      - estadounidense
+      - estadounidenses
+      - norteamericano
+      - norteamericana
+      - norteamericanos
+    abbreviations:
+      - {text: US, ignore_case: false}
+      - {text: USA, ignore_case: false}
+      - {text: EEUU, ignore_case: true}
+    leaders:
+      - name: "Donald Trump"
+        role: president
+        verified: true
+        gdelt: Trump
+        aliases: ["Trump", "Donald Trump"]
+      - name: "Marco Rubio"
+        role: secretary of state
+        verified: true
+        gdelt: Rubio
+        aliases: ["Marco Rubio"]
+
+  - id: china
+    aliases: [China, Chinese, chino, china, chinos, chinas, chinês, chinesa, chinois, chinoise, Chine]
+    leaders:
+      - name: "Xi Jinping"
+        role: president
+        verified: false
+        aliases: ["Xi Jinping"]
+
+  - id: russia
+    aliases: [Russia, Rusia, Russie, ruso, rusa, rusos, russian]
+    leaders:
+      - name: "Vladimir Putin"
+        role: president
+        verified: false
+        gdelt: Putin
+        aliases: ["Putin", "Vladimir Putin"]
+
+  - id: united_kingdom
+    aliases:
+      - "United Kingdom"
+      - "Reino Unido"
+      - "Royaume-Uni"
+      - "Gran Bretaña"
+      - Inglaterra
+      - Britain
+      - British
+      - británico
+      - británica
+      - británicos
+      - britannique
+      - Malvinas
+      - "Islas Malvinas"
+      - Falklands
+      - Falkland
+      - "Falkland Islands"
+    abbreviations:
+      - {text: UK, ignore_case: false}
+
+  - id: france
+    aliases: [France, Francia, France]
+    leaders: []
+
+  - id: germany
+    aliases: [Germany, Alemania, Allemagne, alemán, alemana, alemanes, german]
+
+  - id: spain
+    aliases: [Spain, España, Espagne]
+
+  - id: canada
+    aliases: [Canada, Canadá, canadiense, canadienses, canadian]
+
+  - id: iran
+    aliases: [Iran, Irán, iraní, iranian]
+
+  - id: israel
+    aliases: [Israel, israelí, israeli]
+
+  - id: ukraine
+    aliases: [Ukraine, Ucrania, ucraniano, ucraniana, ukrainian]
+
+  - id: japan
+    aliases: [Japan, Japón, japonés, japonesa, japanese]
+
+  - id: india
+    aliases: [India, indian]
+
+  - id: portugal
+    aliases: [Portugal, portugués, portuguesa, portuguese]
+
+  - id: italy
+    aliases: [Italy, Italia, Italie, italiano, italiana]
+
+  - id: palestine
+    aliases: [Palestine, Palestina, palestino, palestina, palestinian]
+
+  - id: taiwan
+    aliases: [Taiwan, Taiwán]
+
+  - id: syria
+    aliases: [Syria, Siria]
+
+  - id: turkey
+    aliases: [Turkey, Turquía, Türkiye, turco, turca]
+
+  - id: qatar
+    aliases: [Qatar, Catar]
+
+  - id: australia
+    aliases: [Australia]
+
+  - id: saudi_arabia
+    aliases: ["Saudi Arabia", "Arabia Saudita", "Arabia Saudí"]
+
+  - id: south_africa
+    aliases: ["South Africa", Sudáfrica]
+
+  - id: korea
+    aliases: [Corea, Korea, "Corea del Sur", "Corea del Norte", "South Korea", "North Korea"]
+
+  - id: netherlands
+    aliases: [Netherlands, "Países Bajos", Holanda]
+
+  - id: switzerland
+    aliases: [Switzerland, Suiza, Suisse]
+
+  - id: vatican
+    aliases: [Vatican, Vaticano, "Santa Sede"]
+
+  - id: sweden
+    aliases: [Sweden, Suecia]
+
+  - id: norway
+    aliases: [Norway, Noruega]
+
+  - id: belgium
+    aliases: [Belgium, Bélgica]
+
+  - id: poland
+    aliases: [Poland, Polonia]
+
+ir_terms:
+  - aliases: [sanción, sanciones, sancionado, sancionados, sancionar, sanctions, sanction, sanctioned, sanção, sanções]
+  - aliases: [arancel, aranceles, arancelario, arancelaria, tarifa, tarifas, tariff, tariffs, "droit de douane", "droits de douane"]
+  - aliases: [visa, visas, visado, visados]
+  - aliases: [embajador, embajadora, embajadores, embaixador, embaixadora, ambassador, ambassadors, ambassadeur, ambassadrice]
+  - aliases: [embajada, embaixada, embassy, ambassade]
+  - aliases: [consulado, consulate, consulat, consular, consulares, consulaire]
+  - aliases:
+      - "llama a consultas"
+      - "llaman a consultas"
+      - "llamó a consultas"
+      - "llamado a consultas"
+      - "llamada a consultas"
+      - "embajador en consultas"
+      - "embajadora en consultas"
+  - aliases: [diplomático, diplomática, diplomáticos, diplomatic, diplomacy, diplomatique, diplomatie, "relaciones diplomáticas", "relações diplomáticas", "diplomatic relations", "relations diplomatiques"]
+  - aliases: ["relaciones consulares", "relações consulares", "consular relations"]
+  - aliases: [tratado, tratados, treaty, treaties, traité]
+  - aliases: [extradición, extraditar, extraditado, extradition, extradição]
+  - aliases: [deportación, deportaciones, deportado, deportados, deportation, deportations, deportação, deportações]
+  - aliases: [expulsión, expulsiones, expulsado, expulsados, expulsion, expulsions]
+  - aliases: [cumbre, cumbres, summit, summits, sommet, sommets]
+  - aliases: [OEA, OAS, "Organización de los Estados Americanos", "Organization of American States"]
+  - aliases: [ONU, "Naciones Unidas", "United Nations", "Nations Unies", "Nações Unidas"]
+    abbreviations:
+      - {text: UN, ignore_case: false}
+  - aliases: [FMI, IMF, "Fondo Monetario", "Fundo Monetário"]
+  - aliases: [CPI, ICC, TPI, "Corte Penal Internacional", "Tribunal Penal Internacional", "International Criminal Court"]
+  - aliases:
+      - "la ue"
+      - "the eu"
+      - "a ue"
+      - "l ue"
+      - "da ue"
+      - "na ue"
+      - "Unión Europea"
+      - "European Union"
+      - "União Europeia"
+      - "Union européenne"
+    abbreviations:
+      - {text: UE, ignore_case: false}
+      - {text: EU, ignore_case: false}
+  - aliases: ["Escudo de las Américas", "Shield of the Americas", "Escudo das Américas"]
+  - aliases: ["relaciones exteriores", "relações exteriores", "política exterior", "política externa", canciller, cancillería, chanceler, Itamaraty]
+  - aliases: ["rompe relaciones", "romper relaciones", "romperá relaciones", "rompieron relaciones", "reanuda relaciones", "reanudan relaciones", "restablece relaciones", "restablecen relaciones", "suspende relaciones", "suspensión de relaciones"]
+  - aliases: [bilateral, bilaterales, embargo, embargos, injerencia, injerência]
+  - aliases: [Mercosur, Mercosul, Unasur, Unasul, CELAC, BRICS, OTAN, NATO, "Alianza del Pacífico"]
+  - aliases: ["T-MEC", TMEC, USMCA, NAFTA, TLC, OMC, "banco mundial", "World Bank", "banco interamericano"]

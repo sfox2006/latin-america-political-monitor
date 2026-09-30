@@ -13,29 +13,15 @@ from bs4 import BeautifulSoup
 
 from .config import Settings
 from .models import Headline
+from .relations import classify, load_entities, place_terms, term_pool_for_market
 from .sources import INTERNATIONAL_PUBLICATIONS, LATIN_AMERICAN_PUBLICATIONS, match_publication
 from .window import CoverageWindow
 
 LOGGER = logging.getLogger(__name__)
 GDELT_ENDPOINT = "https://api.gdeltproject.org/api/v2/doc/doc"
 
-# The DOC API searches machine-translated English text and rejects encoded queries
-# around 250 characters (a 243-character query succeeded; a 400-character query was
-# rejected as "too short or too long"). These terms are the largest political set
-# that still leaves room to AND every catalogue domain with every regional place.
-POLITICAL_TERMS = (
-    "president", "government", "election", "minister", "congress",
-    "senate", "parliament", "politics", "democracy", "sanctions",
-)
-
-LATIN_AMERICA_PLACES = (
-    "Latin America", "South America", "Central America", "Argentina", "Bolivia", "Brazil", "Brasil",
-    "Chile", "Colombia", "Costa Rica", "Cuba", "Dominican Republic", "Ecuador", "El Salvador",
-    "Guatemala", "Haiti", "Honduras", "Mexico", "México", "Nicaragua", "Panama", "Panamá",
-    "Paraguay", "Peru", "Perú", "Puerto Rico", "Uruguay", "Venezuela",
-)
-
-# Stay under the length that the live API accepted.
+# The DOC API searches machine-translated English and rejects encoded queries
+# around 250 characters. Stay under the length the live API accepted.
 MAX_ENCODED_QUERY_LENGTH = 240
 # Windows shorter than this were rejected ("Timespan is too short") when they
 # ended near the present. Further caps are split by boolean query instead.
@@ -86,44 +72,176 @@ def _pack_terms(values: list[str] | tuple[str, ...], companions: list[str], limi
     return batches
 
 
-def build_queries(batch_size: int = 8, max_encoded_length: int = MAX_ENCODED_QUERY_LENGTH) -> list[tuple[str, str]]:
-    """Return (query, label) pairs that cover every catalogue domain and regional place.
+def _term_cost(term: str) -> int:
+    return _encoded_query_length(_or_group([term]))
 
-    Each query is domain AND place AND politics, packed so the encoded text stays
-    within the DOC API limit. Batch size is a ceiling; length may force smaller batches.
+
+def _sorted_terms(terms: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for term in terms:
+        if term and term not in seen:
+            seen.add(term)
+            unique.append(term)
+    return sorted(unique, key=lambda term: (_term_cost(term), term))
+
+
+def _group_cost(terms: list[str]) -> int:
+    return _encoded_query_length(_or_group(terms))
+
+
+def _pack_by_cost(terms: list[str], budget: int) -> list[list[str]] | None:
+    batches: list[list[str]] = []
+    current: list[str] = []
+    for term in terms:
+        trial = current + [term]
+        if _group_cost(trial) <= budget:
+            current = trial
+            continue
+        if not current:
+            return None
+        batches.append(current)
+        current = [term]
+        if _group_cost(current) > budget:
+            return None
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _pack_terms_for_prefix(prefix: str, terms: list[str], limit: int) -> list[list[str]] | None:
+    batches: list[list[str]] = []
+    current: list[str] = []
+    for term in terms:
+        trial = current + [term]
+        if _encoded_query_length(f"{prefix} {_or_group(trial)}") <= limit:
+            current = trial
+            continue
+        if not current:
+            return None
+        batches.append(current)
+        current = [term]
+        if _encoded_query_length(f"{prefix} {_or_group(current)}") > limit:
+            return None
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _pack_cross(domain_group: str, places: list[str], terms: list[str], limit: int) -> list[str] | None:
+    """AND place batches with term batches, choosing the split with the fewest queries.
+
+    A full cartesian product is required so every place is paired with every term.
+    The split that minimises that product is the one that fits the workflow clock.
+    """
+    if not places or not terms or _encoded_query_length(domain_group) >= limit:
+        return None
+    floor = max(_group_cost([place]) for place in places)
+    best: list[str] | None = None
+    budget = floor
+    while budget < limit:
+        place_batches = _pack_by_cost(places, budget)
+        if place_batches:
+            queries: list[str] = []
+            fits = True
+            for place_batch in place_batches:
+                prefix = f"{domain_group} {_or_group(place_batch)}"
+                term_batches = _pack_terms_for_prefix(prefix, terms, limit)
+                if not term_batches:
+                    fits = False
+                    break
+                queries.extend(f"{prefix} {_or_group(term_batch)}" for term_batch in term_batches)
+            if fits and (best is None or len(queries) < len(best)):
+                best = queries
+        budget += 12
+    if best is not None:
+        return best
+    queries = []
+    for place in places:
+        prefix = f"{domain_group} {_or_group([place])}"
+        term_batches = _pack_terms_for_prefix(prefix, terms, limit)
+        if not term_batches:
+            return None
+        queries.extend(f"{prefix} {_or_group(term_batch)}" for term_batch in term_batches)
+    return queries
+
+
+def _cover_domains(domains: list[str], dimensions: list[list[str]], batch_size: int, limit: int) -> list[str]:
+    """Grow domain batches only while the average query count does not get worse."""
+    ordered = sorted(set(domains), key=len)
+    queries: list[str] = []
+    index = 0
+    while index < len(ordered):
+        batch = [ordered[index]]
+        covered = _cover_batch(batch, dimensions, limit)
+        if not covered:
+            raise ValueError(f"Query for {batch[0]} cannot fit within the news-index length limit")
+        score = len(covered) / len(batch)
+        nxt = index + 1
+        while nxt < len(ordered) and (nxt - index) < batch_size:
+            trial = ordered[index:nxt + 1]
+            trial_covered = _cover_batch(trial, dimensions, limit)
+            if trial_covered is None:
+                break
+            trial_score = len(trial_covered) / len(trial)
+            if trial_score > score + 1e-9:
+                break
+            batch = trial
+            covered = trial_covered
+            score = trial_score
+            nxt += 1
+        for query in covered:
+            if _encoded_query_length(query) > limit:
+                raise ValueError("Packed query exceeded the news-index length limit")
+        queries.extend(covered)
+        index += len(batch)
+    return queries
+
+
+def _cover_batch(domains: list[str], dimensions: list[list[str]], limit: int) -> list[str] | None:
+    domain_group = _or_group(domains, "domain:")
+    if len(dimensions) == 1:
+        batches = _pack_terms(dimensions[0], [domain_group], limit)
+        if not batches:
+            return None
+        return [f"{domain_group} {_or_group(batch)}" for batch in batches]
+    if len(dimensions) == 2:
+        return _pack_cross(domain_group, dimensions[0], dimensions[1], limit)
+    raise ValueError("unsupported query shape")
+
+
+def build_queries(batch_size: int = 8, max_encoded_length: int = MAX_ENCODED_QUERY_LENGTH) -> list[tuple[str, str]]:
+    """Return (query, label) pairs that stay inside the DOC API length limit.
+
+    Regional outlets are ``domain AND (other countries OR foreign/IR terms)``, so a
+    story that only mentions the outlet's own country is not requested. International
+    wires are ``domain AND Latin American place AND (foreign/IR terms)``. Batch size
+    is a ceiling; length and the resulting query count may force smaller batches.
     """
     if batch_size < 1:
         raise ValueError("batch_size must be positive")
     if max_encoded_length < 1:
         raise ValueError("max_encoded_length must be positive")
-    politics = _or_group(POLITICAL_TERMS)
-    places = list(LATIN_AMERICA_PLACES)
+    known_markets = {country.market for country in load_entities().la_countries}
+    by_market: dict[str, list[str]] = {}
+    for publication in LATIN_AMERICAN_PUBLICATIONS:
+        if publication.market not in known_markets:
+            raise ValueError(f"No entities.yml market for {publication.name} ({publication.market})")
+        domains = by_market.setdefault(publication.market, [])
+        if publication.domain not in domains:
+            domains.append(publication.domain)
     queries: list[tuple[str, str]] = []
-    for publications, label in (
-        (LATIN_AMERICAN_PUBLICATIONS, "Latin American press"),
-        (INTERNATIONAL_PUBLICATIONS, "international press"),
+    for market, domains in by_market.items():
+        pool = _sorted_terms(term_pool_for_market(market))
+        for query in _cover_domains(domains, [pool], batch_size, max_encoded_length):
+            queries.append((query, "Latin American press"))
+    for query in _cover_domains(
+        [publication.domain for publication in INTERNATIONAL_PUBLICATIONS],
+        [_sorted_terms(place_terms()), _sorted_terms(term_pool_for_market(None))],
+        batch_size,
+        max_encoded_length,
     ):
-        domains = sorted({publication.domain for publication in publications}, key=len)
-        index = 0
-        while index < len(domains):
-            batch = [domains[index]]
-            nxt = index + 1
-            while nxt < len(domains) and len(batch) < batch_size:
-                trial = batch + [domains[nxt]]
-                if _pack_terms(places, [_or_group(trial, "domain:"), politics], max_encoded_length) is None:
-                    break
-                batch = trial
-                nxt += 1
-            place_batches = _pack_terms(places, [_or_group(batch, "domain:"), politics], max_encoded_length)
-            if not place_batches:
-                raise ValueError(f"Query for {batch[0]} cannot fit within the news-index length limit")
-            domain_group = _or_group(batch, "domain:")
-            for place_batch in place_batches:
-                query = f"{domain_group} {_or_group(place_batch)} {politics}"
-                if _encoded_query_length(query) > max_encoded_length:
-                    raise ValueError("Packed query exceeded the news-index length limit")
-                queries.append((query, label))
-            index = nxt
+        queries.append((query, "international press"))
     return queries
 
 
@@ -330,7 +448,8 @@ def collect(window: CoverageWindow, settings: Settings) -> list[Headline]:
     if settings.enrich_headlines and headlines:
         _enrich_from_original_pages(headlines, settings)
         headlines = _dedupe_headlines(headlines)
-    return headlines
+    # The index query is a recall net. The headline, not the article body, decides scope.
+    return [item for item in headlines if classify(item.title) is not None]
 
 
 def _dedupe_headlines(headlines: list[Headline]) -> list[Headline]:

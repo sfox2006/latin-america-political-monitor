@@ -1,14 +1,10 @@
 # Latin America Political Monitor
 
-A weekday political-headline monitor modelled on `diesel-policy-monitor`. It scans a curated catalogue of widely read Latin American newspapers and major international outlets that cover the region, then produces a complete ledger containing:
+A weekday monitor of Latin America's international relations. It keeps headlines about how Latin American countries, leaders, and governments deal with other countries or international institutions, and drops domestic news.
 
-- every matching headline returned in the coverage window;
-- the publisher;
-- first-indexed time (not an asserted publisher publication time);
-- a link to the publisher's original article;
-- market and local/international classification.
+Each kept item is one line, `Publisher: headline`, followed by the article link. Items are grouped by region (Norteamérica, Centroamérica + Caribe, Sudamérica) and then by country. Headlines that pair a Latin American country or leader with a different country or leader are listed first inside that country. There is no summary, no count, and no top-N cap.
 
-The scheduled GitHub Action runs Monday-Friday at **11:00 UTC**. Monday covers the previous **72 hours** (Friday 11:00 UTC through Monday 11:00 UTC). Tuesday-Friday cover the previous **24 hours**, so weekday windows meet without a gap. A delayed job anchors to the most recent 11:00 UTC boundary instead of moving the window forward.
+The scheduled GitHub Action runs Monday–Friday at **11:00 UTC**. Monday covers the previous **72 hours** (Friday 11:00 UTC through Monday 11:00 UTC). Tuesday–Friday cover the previous **24 hours**, so weekday windows meet without a gap. A delayed job anchors to the most recent 11:00 UTC boundary instead of moving the window forward.
 
 ## Timezone
 
@@ -16,15 +12,32 @@ Scheduled runs (`python main.py --scheduled`, including the weekday GitHub Actio
 
 Manual runs (`python main.py` without `--scheduled`) use `MONITOR_TIMEZONE` (default `America/New_York`) only to decide whether the local calendar day is Monday. Monday in that timezone uses 72 hours; Tuesday–Friday use 24 hours. A manual run can therefore disagree with a scheduled run near a timezone boundary: 11:00 UTC Monday is still Sunday in `Etc/GMT+12` and already Tuesday in `Pacific/Kiritimati`, but the scheduled job still uses the UTC Monday weekend window.
 
-## Coverage
+## What counts
 
-The curated catalogue contains **92 outlets total: 66 regional outlets across 21 Latin American/Caribbean markets and 26 international outlets**. Brazil includes both O Globo (`oglobo.globo.com`) and G1 (`g1.globo.com`). This is an editable watchlist, not a verified ranking or an exhaustive list of every popular newspaper. The complete catalogue is in [`latin_america_monitor/sources.py`](latin_america_monitor/sources.py).
+The filter runs on the **headline only**, after accent folding and case folding, in Spanish, Portuguese, English, and French. Countries, leaders, aliases, and international-relations terms live in [`latin_america_monitor/entities.yml`](latin_america_monitor/entities.yml). The matcher does not hard-code them.
 
-Discovery uses the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) and filters results back to the catalogue. GDELT provides direct publisher URLs. As with any news index, inaccessible or unindexed articles can be missed; the report deliberately states this instead of claiming mathematically complete internet coverage.
+- **Tier 1.** The headline names a Latin American country or leader and a different country or leader (including two Latin American ones). These sort first within the country.
+- **Tier 2.** The headline names one Latin American country, leader, or regional phrase (América Latina, Sudamérica, Centroamérica, Caribe) and an international-relations term: sanctions, tariffs (`aranceles`, `tarifas`), visas, ambassador / `embajador` / `embaixador` and recalled-ambassador phrases (`llama a consultas`), diplomatic or consular relations, treaty, extradition, deportation, summit, OAS/OEA, UN/ONU, IMF/FMI, ICC/CPI, EU/UE, China, Shield of the Americas / Escudo de las Américas, and the rest of the list in `entities.yml`.
+- **Dropped.** Anything else, including a domestic story that only mentions the home country or its own leader.
 
-Both regional and international queries require political terms and a Latin American place mention. GDELT searches the English machine translation of each article, so the political terms are English (`president`, `government`, `election`, and the rest of the list in `collector.py`). Local spellings of country names such as Brasil and México stay in the place list. This keyword method can still include incidental mentions or miss articles that never use those words. Headlines remain in the source language. The time window applies to GDELT's `seendate`, exposed as `seen_at`; publisher publication times are not inferred from index times.
+Short names use word boundaries. Stop phrases blank `Nuevo México` / New Mexico, the Panama Papers, and bare `Georgia` before matching, so those do not count as Mexico, Panama, or a foreign country. Everyday words that collide with abbreviations (`us`, Portuguese `eu`, Spanish `un`, French `a eu`, `US$`) are not treated as the United States, the EU, or the UN. `US`, `EU`, `UE`, `UN`, and `UK` match as uppercase tokens, with a few safe lowercase phrases such as `la ue`.
 
-Each index query is packed under the DOC API length limit (encoded queries longer than about 250 characters are rejected). A query that reaches the 250-result cap is split into smaller time windows of at least 60 minutes, and if it is still capped, the boolean query itself is split. URL duplicates created by those overlaps are removed. If a query still cannot be split, or any query fails after retries, the run fails visibly and writes `failure.json`; no truncated top-N briefing is sent. Distinct article IDs in query parameters are preserved, while common tracking parameters are removed. The same headline published by two outlets is kept.
+A headline that names several Latin American countries is filed under the first specific country or leader in reading order. A pan-regional headline with no specific country is filed under América Latina.
+
+`verified: false` on a leader means the office is not confirmed. Correct `entities.yml` when that changes; do not edit the matcher.
+
+## Catalogue
+
+The watchlist has **146 outlets: 108 Latin American outlets across 21 markets, plus 38 international outlets**. Guyana, Suriname, and Belize are headline entities and have no catalogue outlet. The full list is in [`latin_america_monitor/sources.py`](latin_america_monitor/sources.py). Overlapping desks from the extra-media list were left as the existing entries.
+
+Discovery uses the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) and filters results back to the catalogue. GDELT searches the English machine translation of the article, not the headline. Queries are therefore a recall net, and the headline filter is the precision layer:
+
+- A Latin American outlet is requested as `domain AND (another Latin American country, a foreign or IR term, or a non-home leader)`. The outlet's own country and its own leaders are left out, so a domestic story that only names home is not requested.
+- An international wire is requested as `domain AND a Latin American place AND (an IR term or a configured leader token)`.
+
+GDELT leader tokens in the query are a short high-signal set (`Milei`, `Lula`, `Trump`, `Rubio`, `Putin`). Other leaders are still matched on the headline. Encoded queries stay at or under 240 characters. The same story from two publishers is kept; duplicates are removed only when the canonical URL matches (tracking parameters stripped, article ids preserved).
+
+A full pass is **604 index queries** (398 international, 206 Latin American), each at or under 240 encoded characters. At the 5.25 second delay that is about **53 minutes** before any 250-result cap splits. The workflow allows 150 minutes. Tests reject a plan above 750 queries or 80 minutes at the 5.1 second floor.
 
 ## Run locally
 
@@ -41,7 +54,7 @@ Manual lookback override:
 python main.py --lookback-hours 48 --no-email
 ```
 
-Each run writes dated `.md`, `.csv`, and `.json` files under `output/`. The CSV opens directly in Excel or Google Sheets.
+Each run writes one dated Markdown file under `output/`, named `latin_america_political_monitor_YYYY-MM-DD.md`. The email body is that same text, plus an HTML rendering of the same lines. There is no CSV and no JSON report.
 
 ## Email delivery
 
@@ -56,7 +69,7 @@ Copy `.env.example` to `.env` and configure SMTP values. For GitHub Actions, add
 | `EMAIL_FROM` | Sender address |
 | `EMAIL_TO` | One or more comma-separated recipients |
 
-If email credentials are absent, the Action still generates and uploads the complete report as a workflow artifact.
+Email is sent only when `SMTP_USER`, `SMTP_PASSWORD`, and `EMAIL_TO` are set. Otherwise the Action uploads the report as a workflow artifact and does not send mail.
 
 Optional repository variables:
 
@@ -73,7 +86,7 @@ Optional repository variables:
 3. Open **Actions → Weekday Latin America Political Monitor → Run workflow** for a test.
 4. Scheduled runs begin automatically after the workflow exists on the default branch.
 
-Scheduled coverage ends at **11:00 UTC**. A job that starts up to 10 minutes early still uses that day's boundary; a job that starts later uses the most recent boundary, so a Monday run that slips past midnight still covers the weekend. Successful scheduled runs cache their last coverage boundary; after a missed or failed run, the next run expands its window to recover the gap and labels that span as recovered coverage. Manual runs do not change that state. GitHub may evict caches; if that happens the normal 24/72-hour window is used. The weekday job allows 150 minutes because the length limit requires several hundred short index queries, spaced at least five seconds apart. Report artifacts are retained for 30 days. Email remains disabled until SMTP credentials and recipients are configured.
+Scheduled coverage ends at **11:00 UTC**. A job that starts up to 10 minutes early still uses that day's boundary; a job that starts later uses the most recent boundary, so a Monday run that slips past midnight still covers the weekend. Successful scheduled runs cache their last coverage boundary; after a missed or failed run, the next run expands its window to recover the gap and labels that span as recovered coverage. Manual runs do not change that state. GitHub may evict caches; if that happens the normal 24/72-hour window is used. A failed collection writes `output/failure.json`, sends no email, and does not advance the last-success state. The weekday job allows 150 minutes. Report artifacts are retained for 30 days.
 
 ## Tests
 
@@ -84,4 +97,6 @@ pytest -q
 
 ## Adding or removing newspapers
 
-Edit the two lists in `latin_america_monitor/sources.py`. Each entry contains a display name, domain, market, and scope. No scraper selector is required because discovery is domain-filtered through GDELT.
+Edit the two lists in `latin_america_monitor/sources.py`. Each entry contains a display name, domain, market, and scope. The market string must match a `market` in `entities.yml`. No scraper selector is required because discovery is domain-filtered through GDELT.
+
+Known limits, skipped domains, and leaders still marked `verified: false` are in [`REVIEW.md`](REVIEW.md).
