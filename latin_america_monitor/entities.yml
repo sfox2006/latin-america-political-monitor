@@ -192,7 +192,7 @@ sports_rule:
     time_before: ["a las", "las", "at", "as"]
   sports_bodies: ["fifa", "conmebol", "uefa", "concacaf", "comite olimpico", "olympic committee", "atp", "wta", "nba", "mlb", "cbf", "afa"]
   hard:
-    es: ["copa", "copas", "eliminatoria*", "mundial (2022|2026|2030|2034|2038)", "mundial de (futbol|clubes|rugby|atletismo|basquet|beisbol|voleibol|tenis)", "mundial sub", "mundialista*",
+    es: ["fichaje*", "fichar", "fichara", "ficho", "traspaso de (jugador|futbolista|delantero|arquero|portero|volante|mediocampista)", "copa", "copas", "eliminatoria*", "mundial (2022|2026|2030|2034|2038)", "mundial de (futbol|clubes|rugby|atletismo|basquet|beisbol|voleibol|tenis)", "mundial sub", "mundialista*",
          "goles", "goleada", "golazo", "gol", "futbol", "futbolist*", "futsal", "campeon de", "torneo*", "olimpic*", "juegos olimpicos", "panamericanos", "tenis", "tenista*", "basquet*", "basketball", "baloncesto", "beisbol", "beisbolista*", "voleibol", "rugby", "formula 1", "ciclismo",
          "seleccion (nacional|sub|argentina|brasilena|chilena|colombiana|mexicana|uruguaya|paraguaya|peruana|ecuatoriana|venezolana|boliviana|cubana|hondurena|costarricense|panamena|de futbol|de basquet)",
          "seleccion de (argentina|brasil|chile|colombia|mexico|uruguay|paraguay|peru|ecuador|venezuela|bolivia|cuba|honduras|costa rica|panama|guatemala|el salvador|nicaragua|haiti)",
@@ -1640,48 +1640,3 @@ tier_rules:
   puerto_rico: "PR+US only reaches Tier 1/2 with a strong ir_term; otherwise drop (federal/domestic)."
   publisher_names: "Masked via out_of_entity_names before matching; the `publisher` field is never matched."
   second_latam_country: "A second LatAm group makes Tier 1 even if it appears as a demonym ('Venezolanos ... Colombia')."
-
-# Recall net for GDELT, which searches the English machine translation and rejects
-# long queries. Narrower than the headline aliases. A country outlet does not
-# request its own country name or its own leader tokens.
-gdelt:
-  terms:
-    - sanctions
-    - tariff
-    - tariffs
-    - visa
-    - visas
-    - ambassador
-    - diplomatic
-    - treaty
-    - extradition
-    - deportation
-    - summit
-    - OAS
-    - IMF
-    - CELAC
-    - Mercosur
-    - BRICS
-    - NATO
-    - embargo
-    - bilateral
-    - China
-    - Russia
-    - France
-    - Germany
-    - Spain
-    - Iran
-    - Israel
-    - Ukraine
-    - EU
-    - "United States"
-    - "United Kingdom"
-    - "United Nations"
-    - "European Union"
-  leaders:
-    AR: [Milei]
-    BR: [Lula]
-    US: [Trump, Rubio]
-    RU: [Putin]
-  regional:
-    - "Latin America"

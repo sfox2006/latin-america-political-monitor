@@ -39,7 +39,7 @@ Discovery uses the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2
 - A Latin American outlet is requested as `domain AND (another Latin American country, a foreign or IR term, or a non-home leader)`. The outlet's own country and its own leaders are left out, so a domestic story that only names home is not requested.
 - An international wire, and a pan-regional desk with no home country, is requested as `domain AND a Latin American place AND (an IR term or a configured leader token)`.
 
-GDELT leader tokens in the query are a short high-signal set (`Milei`, `Lula`, `Trump`, `Rubio`, `Putin`). Other leaders are still matched on the headline. Encoded queries stay at or under 240 characters. The same story from two publishers is kept; duplicates are removed only when the canonical URL matches (tracking parameters stripped, article ids preserved).
+GDELT leader tokens in the query are a short high-signal set (`Milei`, `Lula`, `Trump`, `Rubio`, `Putin`), stored in `gdelt.yml` rather than in `entities.yml`. Other leaders are still matched on the headline. Encoded queries stay at or under 240 characters. The same story from two publishers is kept; duplicates are removed only when the canonical URL matches (tracking parameters stripped, article ids preserved).
 
 A full pass is **494 index queries** (312 international, including the pan-regional desks, and 182 Latin American), each at or under 240 encoded characters. At the 5.25 second delay that is about **43 minutes** before any 250-result cap splits. The workflow allows 150 minutes. Tests reject a plan above 750 queries or 80 minutes at the 5.1 second floor.
 

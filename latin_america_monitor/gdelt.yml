@@ -1,0 +1,44 @@
+# Recall net for GDELT, which searches the English machine translation and rejects
+# long queries. Narrower than the headline aliases. A country outlet does not
+# request its own country name or its own leader tokens.
+gdelt:
+  terms:
+    - sanctions
+    - tariff
+    - tariffs
+    - visa
+    - visas
+    - ambassador
+    - diplomatic
+    - treaty
+    - extradition
+    - deportation
+    - summit
+    - OAS
+    - IMF
+    - CELAC
+    - Mercosur
+    - BRICS
+    - NATO
+    - embargo
+    - bilateral
+    - China
+    - Russia
+    - France
+    - Germany
+    - Spain
+    - Iran
+    - Israel
+    - Ukraine
+    - EU
+    - "United States"
+    - "United Kingdom"
+    - "United Nations"
+    - "European Union"
+  leaders:
+    AR: [Milei]
+    BR: [Lula]
+    US: [Trump, Rubio]
+    RU: [Putin]
+  regional:
+    - "Latin America"

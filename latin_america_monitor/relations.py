@@ -24,23 +24,6 @@ _FRENCH_WORDS = {"le", "la", "les", "des", "du", "est", "pour", "avec", "sur"}
 _PORTUGUESE_WORDS = {"não", "nao", "do", "da", "dos", "das", "para", "com", "uma", "é", "está", "pelo", "pela", "sobre", "brasil", "chanceler", "foi"}
 _SPANISH_WORDS = {"el", "los", "las", "del", "por", "una"}
 _CURRENCY = re.compile(r"(?<!\w)(?:US|U\.S\.)\s?\$|(?<!\w)USD(?!\w)", re.IGNORECASE)
-# Football transfers. Hard terms, so an ambiguous word such as "acuerdo" does not rescue them.
-_TRANSFER_HARD = (
-    "fichaje*",
-    "fichar",
-    "ficho",
-    "traspaso*",
-    "traspasar",
-    "cesion*",
-    "contratacao*",
-    "transferencia*",
-    "transfer fee",
-    "transfer window",
-    "player transfer",
-    "football transfer",
-    "soccer transfer",
-    "signing",
-)
 _PERSON_GAP = r"(?:(?!(?:y|e|and|et|con|vs|contra|com|with|del|de)\b)[\w.'-]+\s+){0,2}"
 _RANGE_BEFORE = re.compile(r"(?:\ba las|\blas|\bat|\bdesde|\bhasta|\bfrom|\bde|\bdel|\bentre|\bbetween)\s*$")
 _BARE_NUMBER = re.compile(r"(?<![\d/.,:-])(\d{1,2})(?![\d/%-]|[.,:]\d)")
@@ -48,6 +31,10 @@ _BARE_NUMBER = re.compile(r"(?<![\d/.,:-])(\d{1,2})(?![\d/%-]|[.,:]\d)")
 
 def entities_path() -> Path:
     return Path(__file__).with_name("entities.yml")
+
+
+def gdelt_path() -> Path:
+    return Path(__file__).with_name("gdelt.yml")
 
 
 @dataclass(frozen=True)
@@ -375,10 +362,7 @@ def _build(raw: dict) -> EntityIndex:
         enabled=bool(sports_raw.get("enabled")),
         exceptions=compile_terms(sports_raw.get("exceptions")),
         bodies=compile_terms(sports_raw.get("sports_bodies")),
-        hard=compile_terms(
-            [term for language in ("es", "pt", "en", "fr", "pageants") for term in hard_lists.get(language, [])]
-            + list(_TRANSFER_HARD)
-        ),
+        hard=compile_terms([term for language in ("es", "pt", "en", "fr", "pageants") for term in hard_lists.get(language, [])]),
         versus=compile_terms([term for language in ("es", "pt", "en", "fr") for term in versus_lists.get(language, [])]),
         soft=compile_terms([term for language in ("es", "pt", "en", "fr") for term in soft_lists.get(language, [])]),
         override=compile_terms(sports_raw.get("override_ir")),
@@ -401,7 +385,8 @@ def _build(raw: dict) -> EntityIndex:
         team_names=tuple(team_names),
         bare_score=bool((sports_raw.get("bare_score") or {}).get("enabled")),
     )
-    gdelt = raw["gdelt"]
+    gdelt_raw = yaml.safe_load(gdelt_path().read_text(encoding="utf-8"))
+    gdelt = gdelt_raw["gdelt"] if isinstance(gdelt_raw, dict) and "gdelt" in gdelt_raw else gdelt_raw
     return EntityIndex(
         countries=tuple(countries),
         leaders=tuple(leaders),

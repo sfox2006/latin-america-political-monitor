@@ -18,9 +18,9 @@ A scoreline (`1-1`, `3 a 0`, `2x1`, `2:1` next to a result verb) counts as one s
 
 `policy_override` runs only when the sports reading is soft (no hard term, no bare score, no namesake cue). Strong words (`acusa`, `espionaje`, `negociacion`, `tratado`, `embajador`, and the rest of the strong list) rescue any soft-only reading. Ambiguous words (`acuerdo`, `frontera`, `denuncia`, and the rest of that list) rescue only a single soft signal, and only when no player or coach cue is in the headline. Hard terms are never rescued. `Venezuela acusa a Colombia de espionaje en el Campeonato` and `Colombia y Venezuela empatan 1-1 en negociacion de frontera` stay. A leader override then keeps two countries' leaders, a Latin American leader plus a foreign entity, or a foreign leader plus any Latin American entity. `override_ir` keeps Mercosur, CELAC, the Comunidad Andina, the IMF, the OAS, and the Casa Blanca. Conmebol or FIFA sanctions do not count.
 
-Football transfer words (`fichaje`, `fichar`, `traspaso`, `cesión`, `contratação`, `transferencia`, and the English `transfer fee` / `transfer window` / `player transfer` / `signing`) are hard terms added in the matcher. `Paraguay y Uruguay: acuerdo por fichaje de delantero` therefore drops: `fichaje` is hard, and the ambiguous word `acuerdo` does not rescue a hard term. The matcher is otherwise frozen to the reference rules.
+`fichaje*`, `fichar`, `ficho`, and `traspaso de (jugador|futbolista|delantero|arquero|portero|volante|mediocampista)` are hard terms in `entities.yml`. `Paraguay y Uruguay: acuerdo por fichaje de delantero` drops (S100): `fichaje` is hard, and the ambiguous word `acuerdo` does not rescue a hard term. The matcher adds no sports terms of its own.
 
-Known gap, left dropped on purpose: `Argentina y Chile sellan acuerdo de gas en la final de la Copa` is an in-scope government gas deal, and the hard term `Copa` drops it. Hard terms are not loosened to save it. The test is marked `xfail` and is not part of the labelled set.
+Known gap, labelled and dropped: `Argentina y Chile sellan acuerdo de gas en la final de la Copa` (S101) is an in-scope government gas deal, and the hard term `Copa` drops it. Hard terms are not loosened. The matcher is frozen to the reference rules.
 
 The verified file keeps `Argentina reclama a Brasil por partido de Mercosur` and `Seleccion de Colombia visita la Casa Blanca; Petro y Trump hablan`. The same override keeps `Brasil gana a Argentina; Lula y Milei se cruzan en redes`, `Milei y Lula se enfrentan en la final de la Copa`, `Lula y Trump asisten a un partido durante visita de Estado`, `Copa: Trump y Sheinbaum se reunen antes del Mundial`, and `Partido de Petro rompe con Milei`. `Amistoso Uruguay-Paraguay termina 1-1`, `El entrenador Lula Da Silva dirige a Brasil ante Argentina`, and `Gol de Trump en Argentina vs Chile` drop from the vocabulary itself. `Miss Colombia visita Venezuela` drops.
 
@@ -28,7 +28,7 @@ Two headlines stay dropped and are left for the owner. `Brasil vence a Argentina
 
 `bbc.com/mundo` is labelled BBC Mundo from the article path. Other `bbc.com` paths stay BBC News. The domain alone cannot tell them apart, and both still share one GDELT query.
 
-220 labelled headlines in `tests/fixtures/test_headlines.yml` are asserted (103 keep, 117 drop) and match the reference checker with no mismatches. The 15 borderline headlines, the two one-leader fixtures, and five pattern notes are in that file and are not gated on their own. They are listed on the pull request so the owner can rule on them.
+222 labelled headlines in `tests/fixtures/test_headlines.yml` are asserted (103 keep, 119 drop) and match the reference checker with no mismatches. `entities.yml` is the Sources file verbatim. The GDELT recall list lives in `gdelt.yml` so that vocabulary file is not edited. The 15 borderline headlines, the two one-leader fixtures, and five pattern notes are in that file and are not gated on their own. They are listed on the pull request so the owner can rule on them.
 
 ## Catalogue
 
