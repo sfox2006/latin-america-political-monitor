@@ -156,11 +156,23 @@ def test_borderline_headlines_are_kept_in_the_fixture_without_an_assertion():
     assert all(row.get("question_for_sam") for row in rows)
 
 
-def test_legislative_sanciona_and_sports_fixtures_are_dropped():
+def test_legislative_signing_sports_and_pageants():
     assert classify("Lula sanciona ley de salario minimo") is None
-    kept = classify("Brasil anuncia sanciones contra el sector exportador")
-    assert kept is not None and kept.tier == 2
+    assert classify("Sheinbaum sanciona reforma judicial") is None
+    assert classify("Argentina derrota a la inflacion") is None
     assert classify("Chile vs Argentina: final de la Copa") is None
     assert classify("Brasil derrota a Argentina en las eliminatorias") is None
-    # "partido" is a political party, so it does not drop a diplomatic headline.
-    assert classify("El partido de Lula y Trump acuerdan aranceles") is not None
+    assert classify("Miss Colombia visita Venezuela") is None
+    assert classify("Conmebol sanciona a Argentina") is None
+    sanctions = classify("Brasil anuncia sanciones contra el sector exportador")
+    assert sanctions is not None and sanctions.tier == 2
+    for headline in (
+        "Argentina reclama a Brasil por partido de Mercosur",
+        "Seleccion de Colombia visita la Casa Blanca; Petro y Trump hablan",
+        "Brasil gana a Argentina; Lula y Milei se cruzan en redes",
+        "Partido Comunista de Cuba rechaza sanciones de EEUU",
+        "Trump sanciona a Petro",
+        "EEUU sanciona a funcionarios venezolanos",
+        "El partido de Lula y Trump acuerdan aranceles",
+    ):
+        assert classify(headline) is not None, headline

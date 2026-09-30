@@ -10,14 +10,20 @@ Headline only, accent-insensitive, Spanish / Portuguese / English / French. Lang
 - Tier 2: exactly one Latin American country and a strong international-relations term, or two distinct weak terms on a country name. Weak terms are counted by the matched word, so Spanish `visita` and English `visit` do not double-count.
 - Dropped: everything else. A weak alias counts only when a non-weak entity from a different group is also present. Puerto Rico plus the United States needs a strong international-relations term.
 
-Two tester false positives are closed in the matcher:
+Law-signing phrases in `law_signing_stoplist` are masked before any entity or term match. `Lula sanciona ley de salario minimo` and `Sheinbaum sanciona reforma judicial` drop. `Trump sanciona a Petro` and `EEUU sanciona a funcionarios venezolanos` stay, because those are not law-signing phrases and they name two sides. Explicit sanction forms (`sanciones`, `sanctions`, `sanções`) remain strong terms. There is no bare `sancion*` wildcard.
 
-- `Lula sanciona ley de salario minimo` is dropped. `sanciona` means "signs a law". `sanciones`, `sancionan`, `sanctions`, and `sanções` still count. The ignored token is `gdelt.not_ir_tokens` in `entities.yml`.
-- `Chile vs Argentina: final de la Copa` and `Brasil derrota a Argentina en las eliminatorias` are dropped. Sports and culture terms in `out_of_scope_hint_terms` drop the headline before entity matching (`copa`, `eliminatorias`, `goles`, `selección`, `derrota a`, and the rest of that list). Bare `partido` is not on the list: in Spanish it is also a political party, and `El partido de Lula y Trump acuerdan aranceles` stays.
+`sports_rule` runs after tiering, on the original headline, after party-name exceptions such as `Partido Comunista` are blanked. A headline is a fixture when a hard term hits (`copa`, `eliminatorias`, `goles`, `selección de`, `Miss <country>`), when two soft terms hit, or when a versus verb (`derrota a`, `vs`, `gana a`) joins two country names and no leader is named. A strong international-relations term keeps it, except Conmebol or FIFA sanctions (`Conmebol sanciona a Argentina` still drops). `Argentina derrota a la inflacion` drops because it is one country and not an international-relations term.
+
+Two tester cases are kept even when the sports wording matches, and they are not in the 125:
+
+- `Argentina reclama a Brasil por partido de Mercosur` stays. `partido` here is a political party, and Mercosur is a bloc.
+- `Seleccion de Colombia visita la Casa Blanca; Petro y Trump hablan` stays. Petro and Trump are leaders from different countries, which is the tier-1 pair the owner asked to prioritise.
+
+The same exception keeps `Brasil gana a Argentina; Lula y Milei se cruzan en redes`. `Partido Comunista de Cuba rechaza sanciones de EEUU` stays because the party name is an exception and `sanciones` is a real term. `Miss Colombia visita Venezuela` drops.
 
 `bbc.com/mundo` is labelled BBC Mundo from the article path. Other `bbc.com` paths stay BBC News. The domain alone cannot tell them apart, and both still share one GDELT query.
 
-82 labelled headlines in `tests/fixtures/test_headlines.yml` are asserted (44 keep, 38 drop). The 15 borderline headlines, plus five pattern notes, are in that file and are not gated. They are listed on the pull request so the owner can rule on them.
+125 labelled headlines in `tests/fixtures/test_headlines.yml` are asserted (56 keep, 69 drop). The 15 borderline headlines, plus five pattern notes, are in that file and are not gated. They are listed on the pull request so the owner can rule on them.
 
 ## Catalogue
 

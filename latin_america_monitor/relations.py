@@ -1,9 +1,10 @@
 """Headline filter for Latin American international relations.
 
 Countries, leaders, aliases, and terms live in ``entities.yml``. This module
-only matches them. Behaviour follows that file's tier rules, with two
-tightening rules the labelled set does not cover: sports headlines are
-dropped, and the legislative verb ``sanciona`` is not a sanctions term.
+only matches them. Law-signing phrases are masked before matching. Sports and
+pageant headlines are dropped after tiering, except when leaders from
+different countries (or a leader and a foreign entity) are both named, or a
+bloc such as Mercosur is present.
 """
 
 from __future__ import annotations
@@ -98,17 +99,30 @@ class _Hit:
 
 
 @dataclass(frozen=True)
+class _SportsRule:
+    enabled: bool
+    exceptions: tuple[re.Pattern[str], ...]
+    bodies: tuple[re.Pattern[str], ...]
+    hard: tuple[re.Pattern[str], ...]
+    versus: tuple[re.Pattern[str], ...]
+    soft: tuple[re.Pattern[str], ...]
+    override: tuple[re.Pattern[str], ...]
+    body_excludes: frozenset[str]
+
+
+@dataclass(frozen=True)
 class EntityIndex:
     countries: tuple[Country, ...]
     leaders: tuple[Leader, ...]
     country_by_id: dict[str, Country]
     latam: frozenset[str]
+    institutions: frozenset[str]
     masks: tuple[re.Pattern[str], ...]
     aliases: tuple[_Alias, ...]
     regional: tuple[tuple[re.Pattern[str], bool], ...]
     ir_strong: tuple[tuple[str, re.Pattern[str]], ...]
     ir_weak: tuple[tuple[str, re.Pattern[str]], ...]
-    sports: tuple[re.Pattern[str], ...]
+    sports: _SportsRule
     not_ir_tokens: frozenset[str]
     gdelt_terms: tuple[str, ...]
     gdelt_leaders: dict[str, tuple[str, ...]]
@@ -178,7 +192,11 @@ def _build(raw: dict) -> EntityIndex:
     def add_mask(phrase: str) -> None:
         masks.append((len(_fold(phrase, lower=True)), _alias_pattern(phrase, case_sensitive=False)))
 
-    for phrase in _strings(raw.get("global_stoplist_phrases")) + _strings(raw.get("out_of_entity_names")):
+    for phrase in (
+        _strings(raw.get("global_stoplist_phrases"))
+        + _strings(raw.get("out_of_entity_names"))
+        + _strings(raw.get("law_signing_stoplist"))
+    ):
         add_mask(phrase)
 
     def add_alias(alias: str, group: str, kind: str, weak: bool, case_sensitive: bool, languages: frozenset[str] | None) -> None:
@@ -233,6 +251,12 @@ def _build(raw: dict) -> EntityIndex:
                 add_many(_strings(person.get("aliases")) + list(weak), code, "leader", weak, case_set)
 
     foreign = raw["foreign_entities"]
+    country_ids = {entry["id"] for entry in foreign["countries"]}
+    institutions = {
+        (entry.get("group") or entry["id"])
+        for entry in foreign["institutions"]
+        if (entry.get("group") or entry["id"]) not in country_ids
+    }
     for entry in foreign["countries"] + foreign["institutions"]:
         group = entry.get("group") or entry["id"]
         for phrase in entry.get("stoplist_phrases") or []:
@@ -281,10 +305,22 @@ def _build(raw: dict) -> EntityIndex:
         ir_strong.extend((term, _alias_pattern(term, case_sensitive=False)) for term in terms["strong"])
         ir_weak.extend((term, _alias_pattern(term, case_sensitive=False)) for term in terms["weak"])
 
-    sports = tuple(
-        _alias_pattern(term, case_sensitive=False)
-        for language in raw["out_of_scope_hint_terms"].values()
-        for term in language
+    def compile_terms(values: object) -> tuple[re.Pattern[str], ...]:
+        return tuple(_alias_pattern(term, case_sensitive=False) for term in _strings(values))
+
+    sports_raw = raw.get("sports_rule") or {}
+    hard_lists = sports_raw.get("hard") or {}
+    versus_lists = sports_raw.get("versus") or {}
+    soft_lists = sports_raw.get("soft") or {}
+    sports = _SportsRule(
+        enabled=bool(sports_raw.get("enabled")),
+        exceptions=compile_terms(sports_raw.get("exceptions")),
+        bodies=compile_terms(sports_raw.get("sports_bodies")),
+        hard=compile_terms([term for language in ("es", "pt", "en", "fr", "pageants") for term in hard_lists.get(language, [])]),
+        versus=compile_terms([term for language in ("es", "pt", "en", "fr") for term in versus_lists.get(language, [])]),
+        soft=compile_terms([term for language in ("es", "pt", "en", "fr") for term in soft_lists.get(language, [])]),
+        override=compile_terms(sports_raw.get("override_ir")),
+        body_excludes=frozenset(pattern.pattern for pattern in compile_terms(sports_raw.get("body_excludes"))),
     )
     gdelt = raw["gdelt"]
     return EntityIndex(
@@ -292,6 +328,7 @@ def _build(raw: dict) -> EntityIndex:
         leaders=tuple(leaders),
         country_by_id={country.id: country for country in countries},
         latam=frozenset(latam),
+        institutions=frozenset(institutions),
         masks=tuple(pattern for _, pattern in sorted(masks, key=lambda item: -item[0])),
         aliases=tuple(aliases),
         regional=tuple(regional),
@@ -359,9 +396,48 @@ def _blank_currency(headline: str) -> str:
     return _CURRENCY.sub(lambda match: " " * len(match.group(0)), headline)
 
 
-def _sports(headline: str) -> bool:
-    folded = _fold(headline, lower=True)
-    return any(pattern.search(folded) for pattern in load_entities().sports)
+def _blank(pattern: re.Pattern[str], text: str) -> str:
+    return pattern.sub(lambda match: " " * len(match.group(0)), text)
+
+
+def _actors_keep_sports_headline(hits: list[_Hit], index: EntityIndex) -> bool:
+    """Leaders from two countries, a leader plus a foreign entity, or a bloc."""
+    leader_groups = {hit.group for hit in hits if hit.kind == "leader"}
+    foreign_groups = {hit.group for hit in hits if hit.kind == "foreign"}
+    if len(leader_groups) >= 2:
+        return True
+    if leader_groups and any(group not in leader_groups for group in foreign_groups):
+        return True
+    return any(hit.group in index.institutions for hit in hits)
+
+
+def _sports_drop(headline: str, hits: list[_Hit], index: EntityIndex) -> bool:
+    """Drop a fixture or pageant unless a real international-relations term is present.
+
+    Conmebol or FIFA sanctions do not count. A cross-country leader pair, or a
+    bloc such as Mercosur, is not a fixture even if the wording looks like one.
+    """
+    rule = index.sports
+    if not rule.enabled:
+        return False
+    if _actors_keep_sports_headline(hits, index):
+        return False
+    text = _fold(headline, lower=True)
+    for pattern in rule.exceptions:
+        text = _blank(pattern, text)
+    hard = any(pattern.search(text) for pattern in rule.hard)
+    soft_hits = sum(1 for pattern in rule.soft if pattern.search(text))
+    versus = any(pattern.search(text) for pattern in rule.versus)
+    name_only = bool(hits) and all(hit.kind in {"name", "demonym"} for hit in hits)
+    groups = {hit.group for hit in hits}
+    is_sport = hard or soft_hits >= 2 or (versus and name_only and len(groups) >= 2) or (versus and soft_hits >= 1)
+    if not is_sport:
+        return False
+    body = any(pattern.search(text) for pattern in rule.bodies)
+    for pattern in rule.override:
+        if pattern.search(text) and not (body and pattern.pattern in rule.body_excludes):
+            return False
+    return True
 
 
 def _resolve(hits: list[_Hit]) -> list[_Hit]:
@@ -394,7 +470,7 @@ def classify(title: str) -> Classification | None:
     term (or two weak terms on a country name). Sports fixtures and domestic
     headlines are dropped.
     """
-    if not title or not title.strip() or _sports(title):
+    if not title or not title.strip():
         return None
     index = load_entities()
     language = _language(title)
@@ -435,7 +511,7 @@ def classify(title: str) -> Classification | None:
         named = any(hit.kind == "name" and not hit.weak and hit.group in latam for hit in admitted)
         if strong_ir or (named and len(weak_surfaces) >= 2):
             tier = 2
-    if tier is None:
+    if tier is None or _sports_drop(title, hits, index):
         return None
     latam_hits = [hit for hit in admitted if hit.group in index.latam]
     if latam_hits:

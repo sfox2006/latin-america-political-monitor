@@ -4,10 +4,12 @@ meta:
   rule: keep only headlines about how a Latin American country/leader deals with another country/leader/institution. Tier 1 = names a LatAm entity AND a different country/leader/institution, or two LatAm
     entities. Tier 2 = one LatAm entity + an IR term. Else drop (domestic).
   source_headline_count: 58
+  total_cases: 125
+  synthetic_cases: 67
   counts:
-    should_match_tier1: 32
+    should_match_tier1: 52
     should_match_tier2: 4
-    should_drop: 22
+    should_drop: 69
     borderline: 15
   note: 'IDs T01.. are real example headlines (all headlines found in Prototipo_Noticias, notipo_, notipo__1; the Medios_Posibles file has none). IDs S01.. are synthetic guards. The `expected` label is
     the rule-based classification; items in `borderline` are the ones Sam should rule on (changing them changes the label). Run: python3 check_entities.py entities.yml test_headlines.yml'
@@ -280,51 +282,143 @@ should_match:
 - id: S11
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Mexico resists Trump tariffs as Sheinbaum seeks deal
   expected: 1
   reason: 'English: Mexico + Trump + tariffs (Sam''s own example)'
 - id: S12
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Trump amenaza con aranceles a Brasil
   expected: 1
   reason: Trump + Brasil
 - id: S13
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Brasil chama embaixador em Buenos Aires para consultas
   expected: 1
   reason: 'Portuguese: Brasil + Buenos Aires (weak metonym admitted by the non-weak Brasil) + embaixador/consultas'
 - id: S14
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Le Venezuela rompt ses relations diplomatiques avec le Panama
   expected: 1
   reason: 'French: Venezuela + Panama'
 - id: S16
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Ecuador expulsa a embajador de Cuba
   expected: 1
   reason: Ecuador + Cuba + expulsa/embajador
 - id: S18
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Perú reactiva su embajada en Venezuela
   expected: 1
   reason: 'Perú + Venezuela: two LatAm groups, embajada'
 - id: S20
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Puerto Rico y República Dominicana firman acuerdo de cooperación
   expected: 1
   reason: 'PR + DO: two LatAm groups'
 - id: S23
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Maduro pide al FMI reabrir el crédito a Venezuela
   expected: 1
   reason: case-sensitive Maduro + FMI; (historic-style) sanity check
+- id: S31
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EEUU sanciona a funcionarios venezolanos
+  expected: 1
+  reason: 'TRUE POSITIVE kept: ''sanciona a'' + foreign entity (EEUU) + VE demonym'
+- id: S32
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EE.UU. impone sanciones a Nicaragua
+  expected: 1
+  reason: 'TRUE POSITIVE kept: ''sanciones'' noun'
+- id: S33
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sanciones de la UE contra Venezuela
+  expected: 1
+  reason: 'TRUE POSITIVE kept: ''Sanciones'' + UE + Venezuela'
+- id: S39
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina y Brasil firman acuerdo comercial
+  expected: 1
+  reason: 'POSITIVE CONTROL: two LatAm countries + IR term, no sports term'
+- id: S44
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Colombia sanciona a empresas de EEUU
+  expected: 1
+  reason: 'True positive: Colombia + EEUU (verb+object with foreign entity)'
+- id: S45
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brazil sanctions Venezuelan officials
+  expected: 1
+  reason: 'True positive English: Brazil + Venezuelan'
+- id: S46
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona ley y EEUU reacciona con aranceles a Brasil
+  expected: 1
+  reason: 'Law-signing stoplist must not hide a real IR story: EEUU + aranceles + Brasil'
+- id: S60
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Perú vs Chile: cancilleres piden calma tras incidentes en el partido'
+  expected: 1
+  reason: Sports + strong IR term (cancilleres) => override, kept Tier 1
+- id: S61
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina expulsa a embajador de Brasil tras partido de la Copa
+  expected: 1
+  reason: Sports context but strong IR (expulsa, embajador) => kept
+- id: S62
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Olímpicos: Venezuela denuncia a EEUU por visas a atletas'
+  expected: 1
+  reason: Sports + IR (visas) override => kept
+- id: S66
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido Comunista de Cuba y China firman acuerdo de cooperación
+  expected: 1
+  reason: '''Partido Comunista'' is a political party, excepted from sports ''partido'''
+- id: S67
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El Partido Nacional de Honduras denuncia injerencia de EEUU
+  expected: 1
+  reason: Political party + EEUU; sports_rule exception 'Partido Nacional'
 should_drop:
 - id: T03
   source_file: Prototipo_Noticias.docx.txt
@@ -485,99 +579,332 @@ should_drop:
 - id: S01
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Nuevo México aprueba ley de inmigración
   expected: drop
   reason: 'Stoplist: US state, no LatAm entity (note: if the matcher did not mask it, it would be a false ''México'').'
 - id: S02
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: New Mexico governor signs border security bill
   expected: drop
   reason: 'Stoplist: New Mexico'
 - id: S03
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: 'Panama Papers: fiscalía pide prisión para fundadores de Mossack Fonseca'
   expected: drop
   reason: 'DECISION: Panama Papers stoplisted; no other entity'
 - id: S04
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Guinea Ecuatorial firma acuerdo con Rusia
   expected: drop
   reason: Equatorial Guinea is not Ecuador; masked
 - id: S05
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Georgia y la UE firman acuerdo comercial
   expected: drop
   reason: No LatAm entity
 - id: S06
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Chile con carne recipe wins award in Texas
   expected: drop
   reason: 'Food: chile con carne stoplisted'
 - id: S07
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Colombia Británica declara emergencia por incendios
   expected: drop
   reason: British Columbia masked; 'Colombia' must not match
 - id: S08
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Salvador de Bahía recibe cumbre de alcaldes
   expected: drop
   reason: Bare 'Salvador' is not an El Salvador alias; 'cumbre' alone is Tier 2 only with a LatAm entity
 - id: S09
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: 'Bolivia: la paz social se resquebraja por el paro de transportistas'
   expected: drop
   reason: Single entity, no IR term ('paz' is not an alias for Paz)
 - id: S10
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Peña Nieto enfrenta nuevo proceso judicial
   expected: drop
   reason: Bare surname 'Peña' is not an alias; no country named
 - id: S15
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Sheinbaum anuncia nuevo programa de becas para jóvenes
   expected: drop
   reason: Domestic social policy
 - id: S17
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Chile aprueba reforma de pensiones
   expected: drop
   reason: Domestic
 - id: S19
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: Puerto Rico y EEUU negocian fondos federales para Medicaid
   expected: drop
   reason: PR+US is federal/domestic unless a strong IR term is present
 - id: S21
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: El precio del dólar cierra en alza en Argentina
   expected: drop
   reason: Weak/no IR term; 'dólar' is not an IR term
 - id: S22
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: WHO warns of dengue outbreak in Honduras
   expected: drop
   reason: English 'WHO' intentionally not an alias; single entity, no IR term
 - id: S24
   source_file: synthetic (false-positive / language guards written for this config)
   publisher: (synthetic)
+  synthetic: true
   headline: El maduro proceso de paz sigue en Colombia
   expected: drop
   reason: Lowercase 'maduro' (adjective) must not match; single entity, no IR term
+- id: S25
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona ley de salario mínimo
+  expected: drop
+  reason: 'REGRESSION (Tester FP): es ''sanciona ley'' = signs into law, not a sanction; law_signing_stoplist'
+- id: S26
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sancionou lei do salário mínimo
+  expected: drop
+  reason: 'REGRESSION: pt ''sancionou lei'' = signed into law'
+- id: S27
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Milei sanciona el proyecto de presupuesto
+  expected: drop
+  reason: 'Law-signing: sanciona el proyecto'
+- id: S28
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sheinbaum sancionó la ley de pensiones
+  expected: drop
+  reason: 'Law-signing: sancionó la ley'
+- id: S29
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona decreto sobre el agro
+  expected: drop
+  reason: 'Law-signing: sanciona decreto'
+- id: S30
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Boric sanciona reforma de pensiones
+  expected: drop
+  reason: Law-signing with reform object; single entity, bare 'sanciona' no longer an ir_term
+- id: S34
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Chile vs Argentina: final de la Copa'
+  expected: drop
+  reason: 'REGRESSION (Tester FP): sports fixture between two countries; sports_rule hard term ''copa'''
+- id: S35
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil derrota a Argentina en las eliminatorias
+  expected: drop
+  reason: 'REGRESSION (Tester FP): sports; ''eliminatorias'' + ''derrota a'''
+- id: S36
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina vence a Brasil
+  expected: drop
+  reason: 'Sports guard: versus verb ''vence a'' with two country NAMES and no IR term'
+- id: S37
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mundial 2030 sede Uruguay Argentina Paraguay
+  expected: drop
+  reason: 'Sports guard: World Cup hosting (three countries); sports term ''mundial 2030'''
+- id: S38
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Conmebol sanciona a Argentina
+  expected: drop
+  reason: 'Sports discipline guard: sports body (Conmebol) + ''sanciona a''; sanctions override does NOT apply when a sports body is present'
+- id: S40
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Petro sanciona la ley de reforma laboral
+  expected: drop
+  reason: Law-signing (Colombia)
+- id: S41
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona orçamento 2027
+  expected: drop
+  reason: 'Law-signing pt: orçamento'
+- id: S42
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanctions minimum wage law
+  expected: drop
+  reason: English wire-copy 'sanctions a law' = approves; must not be read as sanctions
+- id: S43
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Le président Lula sanctionne la loi sur le salaire minimum
+  expected: drop
+  reason: French 'sanctionner la loi' = promulgate
+- id: S47
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Chile: Gobierno publica ley que sanciona el acoso callejero'
+  expected: drop
+  reason: Domestic law that 'sanciona' (penalises) harassment; single entity, not an ir_term
+- id: S48
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Michael Jordan donates to Chile earthquake relief
+  expected: drop
+  reason: '''Jordan'' the person is not the country; single entity, no IR term'
+- id: S49
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Jordan Peterson visits Argentina
+  expected: drop
+  reason: 'Same: Jordan is not an alias; single entity'
+- id: S50
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Guinea junta hosts Brazilian delegation
+  expected: drop
+  reason: Bare 'Guinea' stoplisted; 'delegation' weak; single LatAm demonym
+- id: S51
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Georgia legislature passes bill on Mexico border wall
+  expected: drop
+  reason: Georgia stoplisted; Mexico single entity, 'border' weak
+- id: S52
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump visita Ohio y habla de impuestos
+  expected: drop
+  reason: US-only, domestic; no LatAm entity
+- id: S53
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Biden firma ley de salud; Puerto Rico recibirá fondos
+  expected: drop
+  reason: PR + US federal; no strong IR term
+- id: S54
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mexico beats USA in Gold Cup final
+  expected: drop
+  reason: 'Sports English: ''beats'' + final/Gold Cup-style fixture between two countries'
+- id: S55
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Le Brésil bat l'Argentine en finale de la Coupe
+  expected: drop
+  reason: 'Sports French: coupe/finale'
+- id: S56
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brazil beats Argentina 3-0 in World Cup qualifier
+  expected: drop
+  reason: 'Sports English: world cup qualifier'
+- id: S57
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Selección de México gana a EEUU en amistoso
+  expected: drop
+  reason: 'Sports: Selección de + gana a'
+- id: S58
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sancionan a árbitro argentino tras el clásico con Brasil
+  expected: drop
+  reason: 'Sports discipline (árbitro/clásico): ''sancionan a'' must not override when sport terms hit and no sports-body-free IR term'
+- id: S59
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Lima: muere un hincha tras el partido Perú vs Chile'
+  expected: drop
+  reason: Sports violence story
+- id: S63
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Mundial de Qatar: Argentina y Francia definen la final'
+  expected: drop
+  reason: 'Sports: mundial de + final; non-LatAm counterpart irrelevant'
+- id: S64
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Miss Colombia visita Venezuela
+  expected: drop
+  reason: Pageant noise (Miss <país>)
+- id: S65
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula derrota a Bolsonaro en las urnas
+  expected: drop
+  reason: 'Politics, not sports: leaders only, single country, no IR term'
 borderline:
 - id: T01
   headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'

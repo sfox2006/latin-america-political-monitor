@@ -93,6 +93,7 @@ global_stoplist_phrases:
   - "Brasil Paralelo"
   - "Miss Universo"           # beauty contest noise (Miss Venezuela/Miss Colombia ...)
   - "Miss Universe"
+  - "Miss (Argentina|Bolivia|Brasil|Brazil|Chile|Colombia|Costa Rica|Cuba|Ecuador|El Salvador|Guatemala|Honduras|Mexico|Nicaragua|Panama|Paraguay|Peru|Puerto Rico|Republica Dominicana|Uruguay|Venezuela|Mundo|Universo)"   # pageants
   - "Copa América"
   - "Copa Libertadores"
   - "Copa Sudamericana"
@@ -103,14 +104,148 @@ global_stoplist_phrases:
   - "Seleção"
   - "Liga de Campeones"
 
-# Sports/culture are out of scope. The matcher drops a headline that contains any of
-# these (word boundaries, accent-insensitive) before entity matching. Bare "partido"
-# is omitted on purpose: in Spanish it is also a political party.
+# Law-signing usage of "sancionar" (es/pt): the leader SIGNS a bill into law; this is NOT a sanction.
+# Masked before entity + ir_term matching (same mechanism as global_stoplist_phrases).  Regex-lite: (a|b), trailing ?.
+# Covers sanciona/sanciono/sancionó/sancionou/sancionaron/sancionará/sancionar + (a |la |el |una |um |uma |o |a )? + law noun.
+law_signing_stoplist:
+  - "(sanciona|sanciono|sancionaron|sancionara|sancionar|sancionou|sancionam) ((a )?(la |el |una |un |uma |um |o |as |los |las )?)?(nueva |novo |nova |nuevo )?(ley|leyes|lei|leis|proyecto|projeto|decreto|reforma|presupuesto|orcamento|norma|codigo|paquete|estatuto|medida provisoria)"
+  - "sanciona ley"
+  - "sanciona la ley"
+  - "sanciona el proyecto"
+  - "sanciona decreto"
+  - "sancionou lei"
+  - "sanciona lei"
+  - "sanciona a lei"
+  # French "sanctionner une loi" = promulgate; English "sanction(s) a law" = approve (rare, seen in wire copy)
+  - "(sanctionne|sanctionnent|a sanctionne|sanctionnera) (la |le |une |un |l'|les )?(nouvelle |nouveau )?(loi|lois|projet|decret|reforme|budget)"
+  - "(sanctions|sanctioned|sanctioning|sanction) (the |a |new |his |her )?(new )?(minimum wage |labor |labour |budget |pension |tax |tax reform )?(law|bill|decree|budget|reform)"
+
+# SPORTS OUT-OF-SCOPE RULE (implemented by check_entities.py: sports_drop()).
+# Evaluated on the accent-folded, casefolded ORIGINAL headline (after `exceptions` are removed; NOT after the
+# global stoplist, because "Copa América"/"Selección de" are masked there and would hide the sports signal).
+# A headline is SPORTS if: (a) any `hard` term hits, OR (b) >=2 distinct `soft` terms hit, OR
+# (c) >=1 `versus` term hits and every entity group matched is a country NAME/demonym (no leader/institution) and there
+# are >=2 groups ("Argentina vence a Brasil", "Chile vs Argentina").  Leaders ("Trump vs Petro", "Lula derrota a Bolsonaro")
+# are politics, so (c) does not apply.
+# A SPORTS headline is DROPPED unless it also has an `override_ir` term (a strong IR term).  If a sports governing body
+# (`sports_bodies`) is present, the `body_excludes` override terms (sanctions) do not count: "Conmebol sanciona a Argentina".
+sports_rule:
+  enabled: true
+  exceptions:                        # masked before sports matching (non-sport uses of sport-looking words)
+    - "Copa Airlines"
+    - "Liga Arabe"
+    - "Liga de los Estados Arabes"
+    - "Arab League"
+    - "Ligue arabe"
+    - "Liga Hanseatica"
+    - "Liga Anseatica"
+    - "Banco Mundial"
+    - "Copa de vino"
+    - "Partido Comunista"
+    - "Partido Liberal"
+    - "Partido Conservador"
+    - "Partido Nacional"
+    - "Partido Socialista"
+    - "Partido Democrata"
+    - "Partido Republicano"
+    - "Partido Laborista"
+    - "Partido dos Trabalhadores"
+    - "Partido de los Trabajadores"
+  sports_bodies: ["fifa", "conmebol", "uefa", "concacaf", "comite olimpico", "olympic committee", "atp", "wta", "nba", "mlb", "cbf", "afa"]
+  hard:
+    es: ["copa", "copas", "eliminatoria*", "mundial (2022|2026|2030|2034|2038)", "mundial de (futbol|clubes|rugby|atletismo|basquet|beisbol|voleibol|tenis)", "mundial sub", "mundialista*",
+         "goles", "goleada", "golazo", "gol", "futbol", "futbolist*", "futsal", "campeonato*", "campeon de", "torneo*", "olimpic*", "juegos olimpicos", "panamericanos", "tenis", "tenista*", "basquet*", "basketball", "baloncesto", "beisbol", "beisbolista*", "voleibol", "rugby", "formula 1", "ciclismo",
+         "seleccion (nacional|sub|argentina|brasilena|chilena|colombiana|mexicana|uruguaya|paraguaya|peruana|ecuatoriana|venezolana|boliviana|cubana|hondurena|costarricense|panamena|de futbol|de basquet)",
+         "seleccion de (argentina|brasil|chile|colombia|mexico|uruguay|paraguay|peru|ecuador|venezuela|bolivia|cuba|honduras|costa rica|panama|guatemala|el salvador|nicaragua|haiti)",
+         "semifinal*", "cuartos de final", "octavos de final", "la final", "final de la (copa|liga|eliminatoria|champions|libertadores|sudamericana)", "libertadores", "sudamericana", "champions", "liga de campeones", "fifa", "conmebol", "uefa", "concacaf", "atp", "wta", "nba", "mlb", "afa", "cbf", "arbitro*", "clasificatoria*", "tabla de posiciones"]
+    pt: ["copa", "eliminatorias", "mundial (2022|2026|2030|2034|2038)", "gols", "gol", "golaco", "futebol", "campeonato*", "torneio*", "olimpic*", "tenis", "basquete", "selecao", "semifinal*", "libertadores", "fifa", "conmebol", "cbf", "arbitro*", "brasileirao"]
+    en: ["world cup", "copa america", "football match", "soccer", "qualifier*", "championship*", "tournament*", "olympic*", "tennis", "basketball", "baseball", "atp", "fifa", "conmebol", "uefa", "concacaf", "nba", "mlb", "semifinal*", "copa libertadores", "goals", "rugby"]
+    pageants: ["miss (universo|universe|mundo|world|argentina|bolivia|brasil|brazil|chile|colombia|costa rica|cuba|ecuador|el salvador|guatemala|honduras|mexico|nicaragua|panama|paraguay|peru|puerto rico|republica dominicana|uruguay|venezuela)", "certamen de belleza", "reina de belleza", "concurso de belleza"]
+    fr: ["coupe du monde", "football", "tournoi*", "championnat*", "olympique*", "tennis", "basketball", "eliminatoires", "fifa", "conmebol", "uefa", "buts", "finale de la (coupe|ligue)"]
+  versus:                             # head-to-head verbs/markers: one hit + 2 country-NAME groups => sports (rule c)
+    es: ["vs", "versus", "derrota a", "derroto a", "vence a", "vencio a", "gana a", "gano a", "supera a", "golea a", "le gana a", "cae ante", "cayo ante", "empata con"]
+    pt: ["vs", "derrota a", "vence a", "venceu", "ganha de", "goleia", "cai diante de", "empata com"]
+    en: ["vs", "versus", "beats", "defeats"]
+    fr: ["vs", "bat", "battent", "s'impose face a"]
+  soft:                               # ambiguous alone (politics, parties, elections); 2 distinct soft terms => sports (rule b)
+    es: ["partido", "partidos", "liga", "final de", "final", "duelo", "clasico", "encuentro", "jornada", "marcador", "entrenador", "estadio", "hinchas", "afición"]
+    pt: ["jogo", "jogos", "partida", "partido", "liga", "final", "duelo", "classico", "estadio", "torcida", "tecnico"]
+    en: ["match", "matches", "league", "final", "clash", "game", "stadium", "coach", "fans", "score"]
+    fr: ["match", "ligue", "finale", "stade", "entraineur"]
+  override_ir:                        # strong IR terms; if any hits, the sports headline is kept for normal tiering
+    - "sanciones"
+    - "sancion (economica|financiera|comercial|diplomatica|internacional|contra)"
+    - "sancoes"
+    - "sanctions"
+    - "sanctioned"
+    - "sancions"
+    - "embajad*"
+    - "embaixad*"
+    - "ambassador*"
+    - "embassy"
+    - "ambassad*"
+    - "consulado*"
+    - "consulate*"
+    - "cancilleria"
+    - "canciller*"
+    - "chanceler*"
+    - "foreign minister"
+    - "foreign ministry"
+    - "tratado*"
+    - "treaty"
+    - "traite*"
+    - "visa"
+    - "visas"
+    - "arancel*"
+    - "aranceles"
+    - "tarifa* (arancelaria|aduanera)"
+    - "tariff*"
+    - "droits de douane"
+    - "relaciones diplomaticas"
+    - "relacoes diplomaticas"
+    - "diplomatic*"
+    - "diplomaci*"
+    - "romper* relaciones"
+    - "ruptura de relaciones"
+    - "extradicion"
+    - "extradit*"
+    - "acuerdo comercial"
+    - "libre comercio"
+    - "trade (deal|agreement)"
+    - "embargo"
+    - "onu"
+    - "consejo de seguridad"
+    - "security council"
+    - "united nations"
+    - "naciones unidas"
+    - "oea"
+    - "cumbre de presidentes"
+    - "summit"
+    - "deportacion*"
+    - "deport*"
+    - "omc"
+    - "wto"
+    - "cij"
+    - "icj"
+    - "la haya"
+    - "corte internacional"
+    - "tribunal internacional"
+    - "boicot diplomatico"
+    - "diplomatic boycott"
+  body_excludes:                      # override terms that do NOT count when a sports governing body is present
+    - "sanciones"
+    - "sancion (economica|financiera|comercial|diplomatica|internacional|contra)"
+    - "sancoes"
+    - "sanctions"
+    - "sanctioned"
+    - "sancions"
+
+# Sports/culture are out of scope; a cheap pre-filter (optional) drops these before entity matching.
 out_of_scope_hint_terms:
-  es: ["fútbol", "futbol", "gol", "goleada", "goles", "campeonato", "mundial sub", "telenovela", "farándula", "horóscopo", "copa", "eliminatorias", "selección", "derrota a"]
-  pt: ["futebol", "gol", "goleada", "gols", "campeonato", "novela", "horóscopo", "copa", "eliminatórias", "seleção", "derrota a"]
-  en: ["football match", "soccer", "box office", "horoscope", "world cup qualifier"]
-  fr: ["football", "match de", "horoscope", "éliminatoires"]
+  es: ["fútbol", "futbol", "gol", "goleada", "campeonato", "mundial sub", "telenovela", "farándula", "horóscopo"]
+  pt: ["futebol", "gol", "campeonato", "novela", "horóscopo"]
+  en: ["football match", "soccer", "box office", "horoscope"]
+  fr: ["football", "match de", "horoscope"]
 
 # =============================================================================
 # 1. COUNTRIES (20 Latin American + Puerto Rico)
@@ -1025,7 +1160,15 @@ ir_terms:
 
   es:
     strong:
-      - "sancion*"                  # sanciones / sancionar
+      # NOTE: bare "sancion*" REMOVED (2026-09-30): es/pt "sanciona/sancionó/sancionou" usually = a leader signs a law.
+      # Sanctions are matched only as noun / explicit forms. "X sanciona a <Y>" (verb + object) is NOT an ir_term;
+      # it only counts when a foreign entity is also present, which already yields Tier 1 via the entity rule.
+      - "sanciones"
+      - "sancion (economica|financiera|comercial|diplomatica|internacional|contra|a)"
+      - "sanciones? (economica|financiera|comercial|diplomatica|internacional)s?"
+      - "sancionan a"
+      - "sancionar a"
+      - "sancionaran a"
       - "arancel*"
       - "tarifazo"
       - "embajad*"                  # embajada / embajador(a)
@@ -1137,8 +1280,10 @@ ir_terms:
 
   pt:
     strong:
-      - "sancoes"
-      - "sancao"
+      - "sancoes"                   # sanções
+      - "sancao (economica|financeira|comercial|diplomatica|contra)"   # bare sanção/sancionar = law signing in pt; see law_signing_stoplist
+      - "sancionam"
+      - "sancionar"
       - "tarifaco"
       - "tarifas"
       - "embaixad*"
@@ -1279,6 +1424,7 @@ ir_terms:
   fr:
     strong:
       - "sanction*"
+      - "sancions"                  # Catalan/Occitan spelling seen in es/ca outlets
       - "droits de douane"
       - "tarifs douaniers"
       - "ambassad*"
@@ -1345,9 +1491,8 @@ tier_rules:
   second_latam_country: "A second LatAm group makes Tier 1 even if it appears as a demonym ('Venezolanos ... Colombia')."
 
 # Recall net for GDELT, which searches the English machine translation and rejects
-# long queries. This is narrower than the headline aliases above. Leader tokens are
-# omitted for the outlet's own country so a domestic story is not requested.
-# Exact token "sanciona" is not an IR term (it means "signs a law"); see the matcher.
+# long queries. Narrower than the headline aliases. A country outlet does not
+# request its own country name or its own leader tokens.
 gdelt:
   terms:
     - sanctions
@@ -1389,6 +1534,3 @@ gdelt:
     RU: [Putin]
   regional:
     - "Latin America"
-  # Legislative verb. The wildcard sancion* still matches sanciones / sancionan / sanctions.
-  not_ir_tokens:
-    - sanciona
