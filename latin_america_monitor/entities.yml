@@ -1,0 +1,1654 @@
+# =============================================================================
+# LAPM – International-Relations headline filter: entity configuration
+# As-of date for all office-holders: 2026-09-30.  Generated 2026-09-30 (America/New_York).
+# Office-holder facts were verified by web search on 2026-09-30; sources and any
+# UNVERIFIED items are listed in leaders_verification.md (same folder).
+#
+# MATCHING RULES (implemented by the reference checker check_entities.py):
+#   * Match on HEADLINE TEXT ONLY (no body, no URL, no publisher name).
+#   * Normalisation: Unicode NFKD, strip combining marks (accent-insensitive),
+#     casefold, collapse whitespace/punctuation (so "EE. UU." == "ee uu" == "EEUU" via explicit aliases).
+#     Aliases listed here keep their natural accents for readability; they are folded at load time.
+#   * Word boundaries: every alias is matched as a whole token sequence unless it carries a
+#     trailing "*" (prefix wildcard, e.g. "sancion*" -> sanción/sanciones/sancionar).
+#   * case_sensitive aliases are matched BEFORE casefolding against the original text
+#     (needed for EU/UE, US, UN, CAN, BID, CPI, RD, Maduro, Rubio ...).
+#   * weak aliases never trigger on their own; they only count if another (non-weak) entity
+#     from a DIFFERENT group is also present in the same headline.
+#   * stoplist_phrases are masked out of the headline before matching (global_stoplist_phrases too).
+#   * Headline language (es/pt/en/fr) is detected first; `lang_only` restricts an alias to those languages.
+#
+# TIERS:
+#   Tier 1 = >=1 LatAm entity AND >=1 DIFFERENT entity: a foreign country/leader/institution,
+#            or a second LatAm country/leader.
+#   Tier 2 = exactly one LatAm country (leader + own country collapse to ONE) AND >=1 strong ir_term.
+#   Else DROP (domestic).
+#   "Collapse": a leader/figure counts as the country they belong to (Kast + Chile = 1 entity).
+#   Foreign officials with `implies_country` (e.g. US chargé John Barrett -> VE) also count as that LatAm entity.
+#   Special case: Puerto Rico + United States never yields Tier 1 on its own (PR-US is federal/domestic);
+#   it needs an additional ir_term (see puerto_rico_us_rule).
+# =============================================================================
+
+meta:
+  version: 1
+  as_of: "2026-09-30"
+  languages: [es, pt, en, fr]
+  accent_insensitive: true
+  headline_only: true
+  all_caps_headline_fix: true   # if >70% of letters are uppercase, title-case the headline BEFORE case-sensitive checks
+  puerto_rico_us_rule: require_ir_term   # PR + US => Tier 2 only if a strong ir_term is present
+  latam_blocs_note: "2026-09-30: Mercosur, CELAC, CAN, Alianza del Pacífico, ALBA-TCP moved from foreign_entities to `latam_blocs` (LatAm groups; same schema)."
+  case_sensitive_note: >
+    Spanish/Portuguese press uses "EU" for Estados Unidos (Proceso, El Universal) while English
+    "EU" is the European Union; "UE" is Unión Europea. Handled in foreign_entities via lang_only.
+
+regions:
+  "Norteamérica": [MX]
+  "Centroamérica + Caribe": [GT, HN, SV, NI, CR, PA, CU, DO, HT, PR]
+  "Sudamérica": [AR, BO, BR, CL, CO, EC, PY, PE, UY, VE]
+
+# Words that must never be matched as entities anywhere (applied to the whole headline first).
+global_stoplist_phrases:
+  - "Nuevo México"            # US state (also New Mexico / Nouveau-Mexique / Novo México)
+  - "New Mexico"
+  - "Nouveau-Mexique"
+  - "Novo México"
+  - "Ciudad de México"        # city-level news is domestic; remove if capital-level diplomacy matters
+  - "Mexico City"
+  - "Cidade do México"
+  - "Guinea Ecuatorial"       # Equatorial Guinea (not Ecuador)
+  - "Equatorial Guinea"
+  - "Guinée équatoriale"
+  - "Guiné Equatorial"
+  - "Papúa Nueva Guinea"
+  - "Papua New Guinea"
+  - "Guinea-Bisáu"
+  - "Guinea Bissau"
+  - "Guinea"                  # bare Guinea is never a target entity
+  - "Georgia"                 # US state / Caucasus: not in scope, avoids Georgia-vs-"George..." noise
+  - "Colombia Británica"      # British Columbia (Canada)
+  - "British Columbia"
+  - "Colombie-Britannique"
+  - "Colômbia Britânica"
+  - "Distrito de Columbia"
+  - "District of Columbia"
+  - "Washington Post"
+  - "Washington Commanders"
+  - "Estado de Washington"
+  - "Washington State"
+  - "George Washington"
+  - "Panama Papers"           # DECISION: stoplisted (2016 leak/trial coverage, not Panama-the-state). Re-enable case by case.
+  - "Papeles de Panamá"
+  - "Papéis do Panamá"
+  - "Panama City Beach"
+  - "chile con carne"
+  - "chili con carne"
+  - "chile relleno"
+  - "chile en nogada"
+  - "chiles en nogada"
+  - "Ronda Uruguay"
+  - "Uruguay Round"
+  - "Orden Dominicana"
+  - "Dominican Order"
+  - "Brasil de Fato"           # media outlet name, not the state
+  - "Brasil Paralelo"
+  - "Miss Universo"           # beauty contest noise (Miss Venezuela/Miss Colombia ...)
+  - "Miss Universe"
+  - "Miss (Argentina|Bolivia|Brasil|Brazil|Chile|Colombia|Costa Rica|Cuba|Ecuador|El Salvador|Guatemala|Honduras|Mexico|Nicaragua|Panama|Paraguay|Peru|Puerto Rico|Republica Dominicana|Uruguay|Venezuela|Mundo|Universo)"   # pageants
+  - "Copa América"
+  - "Copa Libertadores"
+  - "Copa Sudamericana"
+  - "Copa del Mundo"
+  - "Mundial de Fútbol"
+  - "World Cup"
+  - "Selección de"            # sports team headlines ("Selección de Colombia ...")
+  - "Seleção"
+  - "Liga de Campeones"
+
+# Law-signing usage of "sancionar" (es/pt): the leader SIGNS a bill into law; this is NOT a sanction.
+# Masked before entity + ir_term matching (same mechanism as global_stoplist_phrases).  Regex-lite: (a|b), trailing ?.
+# Covers sanciona/sanciono/sancionó/sancionou/sancionaron/sancionará/sancionar + (a |la |el |una |um |uma |o |a )? + law noun.
+law_signing_stoplist:
+  - "(sanciona|sanciono|sancionaron|sancionara|sancionar|sancionou|sancionam) ((a )?(la |el |una |un |uma |um |o |as |los |las )?)?(nueva |novo |nova |nuevo )?(ley|leyes|lei|leis|proyecto|projeto|decreto|reforma|presupuesto|orcamento|norma|codigo|paquete|estatuto|medida provisoria)"
+  - "sanciona ley"
+  - "sanciona la ley"
+  - "sanciona el proyecto"
+  - "sanciona decreto"
+  - "sancionou lei"
+  - "sanciona lei"
+  - "sanciona a lei"
+  # French "sanctionner une loi" = promulgate; English "sanction(s) a law" = approve (rare, seen in wire copy)
+  - "(sanctionne|sanctionnent|a sanctionne|sanctionnera) (la |le |une |un |l'|les )?(nouvelle |nouveau )?(loi|lois|projet|decret|reforme|budget)"
+  - "(sanctions|sanctioned|sanctioning|sanction) (the |a |new |his |her )?(new )?(minimum wage |labor |labour |budget |pension |tax |tax reform )?(law|bill|decree|budget|reform)"
+
+# SPORTS OUT-OF-SCOPE RULE (implemented by check_entities.py: sports_drop()).
+# Evaluated on the accent-folded, casefolded ORIGINAL headline (after `exceptions` are removed; NOT after the
+# global stoplist, because "Copa América"/"Selección de" are masked there and would hide the sports signal).
+# A headline is SPORTS if: (a) any `hard` term hits, OR (b) >=2 distinct `soft` terms hit, OR
+# (c) >=1 `versus` term hits and every entity group matched is a country NAME/demonym (no leader/institution) and there
+# are >=2 groups ("Argentina vence a Brasil", "Chile vs Argentina").  Leaders ("Trump vs Petro", "Lula derrota a Bolsonaro")
+# are politics, so (c) does not apply.
+# A SPORTS headline is DROPPED unless it also has an `override_ir` term (a strong IR term).  If a sports governing body
+# (`sports_bodies`) is present, the `body_excludes` override terms (sanctions) do not count: "Conmebol sanciona a Argentina".
+# NOTE (2026-09-30 fix): `soft` terms are counted as DISTINCT terms (the es and pt lists both contain "partido"/"liga"/"final"; counting
+# both made a single "partido" = 2 soft hits = sports).  `partido` alone is therefore NOT sports; it needs a 2nd distinct soft cue or a
+# hard/versus cue ("Argentina reclama a Brasil por partido de Mercosur" = kept).  Strong IR INSTITUTIONS (Mercosur, OEA, ONU, CELAC,
+# FMI, Comunidad Andina, ...) are in `override_ir`, so a sports-looking headline naming one is kept.
+# LEADER OVERRIDE (`leader_override`, implemented in check_entities.py leader_override()/sports_drop()): evaluated BEFORE override_ir, AFTER the
+# sports decision.  A sports-classified headline is KEPT (not dropped) when
+#   (a) it names leaders of two DIFFERENT countries (LatAm+LatAm, or LatAm+foreign e.g. Petro + Trump; same-country pairs do not count), or
+#   (b) it names a LatAm leader AND a non-LatAm foreign entity (US/EEUU/Casa Blanca/White House/China/UE/institution/foreign person), or
+#   (c) it names a foreign leader/official (Trump, Xi, Putin, Rubio...) AND any LatAm country/demonym/leader ("Trump sanciona a la seleccion de Venezuela").
+# Only NON-weak alias hits of kind leader / foreign-person count.  A leader alias directly adjacent (<=2 words, no connector) to a
+# `sports_person_cues` word ("entrenador Ortega", "Petro, delantero") is a namesake coach/player, not a leader, and is ignored.
+# POLICY OVERRIDE + SOFT-ONLY (2026-09-30): `campeonato*`/`championship*` is now a SOFT term (one alone is not sports).  A sports reading built only from soft signals
+# (soft terms, scoreline, versus verb) is overridden by a `policy_override` word; hard terms are not.  `bare_score` ("Brasil 2 Argentina 1") is hard-ish.  See sports_rule.policy_override.
+# Not affected: a pure fixture with no leader ("Chile vs Argentina: final de la Copa"), and sports-body discipline ("Conmebol sanciona a Argentina").
+sports_rule:
+  enabled: true
+  exceptions:                        # masked before sports matching (non-sport uses of sport-looking words)
+    - "Copa Airlines"
+    - "Liga Arabe"
+    - "Liga de los Estados Arabes"
+    - "Arab League"
+    - "Ligue arabe"
+    - "Liga Hanseatica"
+    - "Liga Anseatica"
+    - "Banco Mundial"
+    - "Copa de vino"
+    - "Partido Comunista"
+    - "Partido Liberal"
+    - "Partido Conservador"
+    - "Partido Nacional"
+    - "Partido Socialista"
+    - "Partido Democrata"
+    - "Partido Republicano"
+    - "Partido Laborista"
+    - "Partido dos Trabalhadores"
+    - "Partido de los Trabajadores"
+    - "Cumbre Sudamericana"            # (2026-09-30) 'sudamericana' is a hard sports term (Copa Sudamericana) - keep diplomatic uses out
+    - "Union Sudamericana"
+    - "Comunidad Sudamericana"
+    - "Integracion Sudamericana"
+    - "Libertadores de America"
+  leader_override:
+    enabled: true
+    sports_person_cues: ["entrenador", "entrenadora", "dt", "director tecnico", "tecnico", "delantero", "arquero", "portero", "mediocampista", "volante", "jugador", "jugadora", "futbolista", "goleador", "capitan", "tenista", "arbitro", "coach", "striker", "goalkeeper", "midfielder", "player", "referee", "treinador", "atacante", "goleiro", "zagueiro", "jogador", "meia",
+                          "gol de", "goles de", "golazo de", "doblete de", "hat-trick de", "tripleta de", "gol do", "gols de", "gols do", "goal by", "goals by", "goal from", "goals from", "hat-trick by", "atleta", "arquera", "portera", "capitana", "tecnica", "directora tecnica", "captain", "winger", "capitao", "treinadora", "lateral derecho", "lateral izquierdo", "centrodelantero", "extremo derecho", "extremo izquierdo", "defensor central", "el tecnico", "la tecnica"]
+    weak_post_cues: ["jugador", "jugadora", "player", "capitan", "capitana", "captain", "arbitro", "referee", "atleta", "tecnico", "tecnica", "coach", "campeon", "jogador", "capitao"]   # ambiguous when AFTER the name ("Petro, jugador clave"): still not a leader, but do NOT start the sports rule
+  # a sports_person_cue directly before/after a leader-named alias (<=2 words, no connector) is ALSO a sports signal: the sports rule starts even
+  # with no hard term ("El entrenador Lula Da Silva dirige a Brasil ante Argentina"); see sports_drop() `namesake`.
+    namesake_starts_sports: true
+  # scoreline (soft term): "1-1", "3-0", "2:1", "3 a 0", "2x1".  Counted as ONE soft term, and (like a versus verb) makes a 2-country-name headline sports.
+  # Only valid when (a) a result verb is in the headline OR the score sits directly beside a country/team name ("Uruguay 2-1 Paraguay") and
+  # (b) it is not a date/range/time/vote count: no digit/"-"/"/"/"."/"," glued to it, not followed by a unit (semanas, meses, votos, %...),
+  # and no vote/legislative/court word in the headline (senado, votos, corte, congreso, ...).  "2026-09-30", "2026-2030", "1-2 semanas",
+  # "Senado de Chile aprueba 30-10 tratado con la UE" are NOT scorelines.
+  scoreline:
+    enabled: true
+    pattern: '(?<![\d/.,:-])(\d{1,2})\s?([-–x:]|a|to)\s?(\d{1,2})(?![\d/.,:%-])'
+    result_verbs: ["termina*", "empata*", "empate", "gana*", "gano", "vence*", "vencio", "golea*", "goleo", "cae", "cayo", "pierde*", "perdio", "derrota*", "derroto", "iguala*", "igualo", "finaliza*", "cierra con", "perde", "perdeu", "ganha*", "ganhou", "goleia", "venceu", "empatou", "ends", "end", "draw", "draws", "drew", "beat", "beats", "wins", "won", "lose", "loses", "lost", "defeat", "defeats", "edge", "edges"]
+    unit_after: ["de", "del", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "setiembre", "octubre", "noviembre", "diciembre", "janeiro", "fevereiro", "marco", "maio", "junho", "julho", "setembro", "outubro", "novembro", "dezembro", "january", "february", "march", "april", "june", "july", "august", "september", "october", "november", "december", "semana*", "mes", "meses", "dia", "dias", "ano*", "hora*", "horas", "minuto*", "segundo*", "voto*", "puntos porcentuales", "mil", "millones", "millon", "bilhoes", "milhoes", "billion", "million", "week*", "month*", "day*", "year*", "hour*", "minute*", "semaine*", "mois", "jour*", "anos", "kg", "km", "%"]
+    block_terms: ["voto*", "votacion*", "votar", "votos", "senado", "senador*", "senate", "senator*", "camara", "congreso", "parlamento", "parliament", "diputad*", "corte", "tribunal", "suprema", "court", "justices", "jueces", "ministros del", "stf", "plebiscito", "referendo", "referendum", "escrutinio", "asamblea", "vote*", "poll*", "encuesta*", "escanos", "bancas", "cadeiras", "seats", "aprob*", "aprueb*", "rechaz*", "ratific*", "tasa*", "inflacion", "rate", "pib", "gdp"]
+    time_before: ["a las", "las", "at", "as"]
+  sports_bodies: ["fifa", "conmebol", "uefa", "concacaf", "comite olimpico", "olympic committee", "atp", "wta", "nba", "mlb", "cbf", "afa"]
+  hard:
+    es: ["fichaje*", "fichar", "fichara", "ficho", "traspaso de (jugador|futbolista|delantero|arquero|portero|volante|mediocampista)", "copa", "copas", "eliminatoria*", "mundial (2022|2026|2030|2034|2038)", "mundial de (futbol|clubes|rugby|atletismo|basquet|beisbol|voleibol|tenis)", "mundial sub", "mundialista*",
+         "goles", "goleada", "golazo", "gol", "futbol", "futbolist*", "futsal", "campeon de", "torneo*", "olimpic*", "juegos olimpicos", "panamericanos", "tenis", "tenista*", "basquet*", "basketball", "baloncesto", "beisbol", "beisbolista*", "voleibol", "rugby", "formula 1", "ciclismo",
+         "seleccion (nacional|sub|argentina|brasilena|chilena|colombiana|mexicana|uruguaya|paraguaya|peruana|ecuatoriana|venezolana|boliviana|cubana|hondurena|costarricense|panamena|de futbol|de basquet)",
+         "seleccion de (argentina|brasil|chile|colombia|mexico|uruguay|paraguay|peru|ecuador|venezuela|bolivia|cuba|honduras|costa rica|panama|guatemala|el salvador|nicaragua|haiti)",
+         "semifinal*", "cuartos de final", "octavos de final", "la final", "final de la (copa|liga|eliminatoria|champions|libertadores|sudamericana)", "libertadores", "sudamericana", "champions", "liga de campeones", "fifa", "conmebol", "uefa", "concacaf", "atp", "wta", "nba", "mlb", "afa", "cbf", "arbitro*", "clasificatoria*", "tabla de posiciones",
+         "amistoso*", "copa sudamericana", "copa libertadores", "eliminatorias sudamericanas", "goleada*", "estadio de futbol", "partido amistoso", "amistoso internacional", "hinchada*", "barra brava*", "tanda de penales", "pitazo final", "tiempo (extra|suplementario)", "empato (a|en|con) (cero|un|dos|tres)", "goles? en contra"]
+    pt: ["copa", "eliminatorias", "mundial (2022|2026|2030|2034|2038)", "gols", "gol", "golaco", "futebol", "torneio*", "olimpic*", "tenis", "basquete", "selecao", "semifinal*", "libertadores", "fifa", "conmebol", "cbf", "arbitro*", "brasileirao", "amistoso*", "goleada*", "libertadores", "sul-americana", "sulamericana", "eliminatorias sul-americanas", "partida amistosa", "estadio de futebol", "torcida organizada", "tempo extra", "prorrogacao", "disputa de penaltis", "apito final"]
+    en: ["world cup", "copa america", "football match", "soccer", "qualifier*", "tournament*", "olympic*", "tennis", "basketball", "baseball", "atp", "fifa", "conmebol", "uefa", "concacaf", "nba", "mlb", "semifinal*", "copa libertadores", "goals", "rugby", "friendly (match|game)", "international friendly", "pre-season friendly", "copa sudamericana", "extra time", "penalty shootout", "hat-trick", "hat trick", "full-time", "full time", "goalless", "scoreless", "referee*", "matchday", "stoppage time", "clean sheet"]
+    pageants: ["miss (universo|universe|mundo|world|argentina|bolivia|brasil|brazil|chile|colombia|costa rica|cuba|ecuador|el salvador|guatemala|honduras|mexico|nicaragua|panama|paraguay|peru|puerto rico|republica dominicana|uruguay|venezuela)", "certamen de belleza", "reina de belleza", "concurso de belleza"]
+    fr: ["coupe du monde", "football", "tournoi*", "olympique*", "tennis", "basketball", "eliminatoires", "fifa", "conmebol", "uefa", "buts", "finale de la (coupe|ligue)"]
+  versus:                             # head-to-head verbs/markers: one hit + 2 country-NAME groups => sports (rule c)
+    es: ["vs", "versus", "derrota a", "derroto a", "vence a", "vencio a", "gana a", "gano a", "supera a", "golea a", "le gana a", "cae ante", "cayo ante", "empata con", "empato con", "empatan con", "iguala con", "igualo con", "igualaron con", "empataron con", "golean a", "goleo a", "pierde ante", "perdio ante", "se impone a", "se impuso a", "triunfo sobre", "victoria sobre", "derrota ante", "derrota frente a", "gano a", "ganan a", "vencen a", "vencieron a"]
+    pt: ["vs", "derrota a", "vence a", "venceu", "ganha de", "goleia", "cai diante de", "empata com", "empatou com", "venceu a", "vence o", "bate o", "bateu o", "goleou", "perde para", "perdeu para", "ganha do", "ganhou do"]
+    en: ["vs", "versus", "beats", "defeats", "beat", "win over", "wins over", "won over", "draw with", "draws with", "drew with", "draw against", "draws against", "tie with", "ties with", "thrash", "thrashes", "lose to", "loses to", "lost to"]
+    fr: ["vs", "bat", "battent", "s'impose face a"]
+  soft:                               # ambiguous alone (politics, parties, elections); 2 distinct soft terms => sports (rule b)
+    es: ["partido", "partidos", "liga", "final de", "final", "duelo", "clasico", "encuentro", "jornada", "marcador", "entrenador", "estadio", "hinchas", "afición", "empate", "gol de", "camiseta", "vestuario", "convocados", "convocatoria", "campeonato*"]
+    pt: ["jogo", "jogos", "partida", "partido", "liga", "final", "duelo", "classico", "estadio", "torcida", "tecnico", "empate", "placar", "rodada", "convocados", "convocacao", "campeonato*"]
+    en: ["match", "matches", "league", "final", "clash", "game", "stadium", "coach", "fans", "score", "draw", "kickoff", "kick-off", "lineup", "squad", "friendly", "championship*"]
+    fr: ["match", "ligue", "finale", "stade", "entraineur", "championnat*"]
+  # POLICY / DIPLOMATIC OVERRIDE (2026-09-30, implemented in check_entities.py policy_rescue()/sports_drop()).  Applies ONLY when the sports decision rests
+  # on SOFT signals alone (no `hard` term, no bare-score, no namesake cue): soft terms (partido, final, campeonato, ...), a scoreline, a versus verb.
+  # A missed story costs more than an extra line, so:
+  #   strong    - unambiguous state-to-state words: rescue ANY soft-only sports reading ("Colombia y Venezuela empatan 1-1 en negociacion de frontera").
+  #   ambiguous - words that also occur in sports copy ("acuerdo de pase", "gol en la frontera del area", "denuncia", "expulsado"): rescue ONLY when the sports
+  #               reading is a SINGLE soft signal (soft terms + scoreline + versus verb == 1) AND no sports_person_cue word is present.
+  # Hard terms (copa, eliminatorias, goles, amistoso, arbitro, conmebol ...) are NOT rescued by either list; they still need override_ir / leader_override.
+  # If a sports governing body is present, terms that also appear in `body_excludes` (sanctions) do not count.
+  policy_override:
+    strong:
+      - "acusa*"                          # acusa / acusan / acusacion(es) / acusado
+      - "accus*"                          # en accuses / fr accuse
+      - "espionaje"
+      - "espionage"
+      - "espionnage"
+      - "espionagem"
+      - "negociac*"                       # es negociacion(es) / pt negociacao(oes)
+      - "negociation*"
+      - "negotiation*"
+      - "negocia(r|n|ra|ran|m)"
+      - "negotiate*"
+      - "negotiating"
+      - "tratado*"
+      - "treaty"
+      - "traite*"
+      - "embajad*"
+      - "embaixad*"
+      - "ambassad*"
+      - "cancilleria"
+      - "canciller*"
+      - "chanceler*"
+      - "foreign (minister|ministry)"
+      - "sanciones"
+      - "sancoes"
+      - "sanctions"
+      - "arancel*"
+      - "tariff*"
+      - "aranceles"
+      - "visas"
+      - "extradicion"
+      - "extradit*"
+      - "romp(e|en|er|io|ieron) relaciones"
+      - "romp(e|em|er|eu|eram) relacoes"
+      - "rompt (ses )?relations"
+      - "(cuts|cut|severs|sever|breaks|break) (diplomatic )?(ties|relations)"
+      - "protesta diplomatica"
+      - "nota de protesta"
+      - "nota de protesto"
+      - "diplomatic*"
+      - "diplomati*"
+      - "omc"
+      - "wto"
+      - "t-mec"
+      - "usmca"
+      - "cij"
+      - "icj"
+      - "la haya"
+      - "the hague"
+      - "la haye"
+      - "disputa (territorial|limitrofe|comercial|diplomatica|fronteriza|maritima)"
+      - "demanda ante"
+      - "demanda (contra|a) (el |la )?(estado|gobierno)"
+    ambiguous:
+      - "acuerdo*"
+      - "acordo*"
+      - "agreement*"
+      - "accord*"
+      - "frontera*"
+      - "fronteira*"
+      - "frontiere*"
+      - "border*"
+      - "dialogo"
+      - "dialogue"
+      - "conversaciones"
+      - "conversacoes"
+      - "talks"
+      - "denuncia*"
+      - "denuncian"
+      - "reclamo*"
+      - "reclama*"
+      - "disputa*"
+      - "protesta*"
+      - "expulsa*"
+      - "expulsion*"
+  # bare score (hard-ish): "<country> N <country> M" with NO dash ("Brasil 2 Argentina 1").  Counts as a HARD sports term unless a policy_override word
+  # or a scoreline block_term (senado, votos, corte, aprueba...) is present, or the second number is followed by a unit (millones, %, ...).
+  bare_score:
+    enabled: true
+  override_ir:                        # strong IR terms; if any hits, the sports headline is kept for normal tiering
+    - "sanciones"
+    - "sancion (economica|financiera|comercial|diplomatica|internacional|contra)"
+    - "sancoes"
+    - "sanctions"
+    - "sanctioned"
+    - "sancions"
+    - "embajad*"
+    - "embaixad*"
+    - "ambassador*"
+    - "embassy"
+    - "ambassad*"
+    - "consulado*"
+    - "consulate*"
+    - "cancilleria"
+    - "canciller*"
+    - "chanceler*"
+    - "foreign minister"
+    - "foreign ministry"
+    - "tratado*"
+    - "treaty"
+    - "traite*"
+    - "visa"
+    - "visas"
+    - "arancel*"
+    - "aranceles"
+    - "tarifa* (arancelaria|aduanera)"
+    - "tariff*"
+    - "droits de douane"
+    - "relaciones diplomaticas"
+    - "relacoes diplomaticas"
+    - "diplomatic*"
+    - "diplomaci*"
+    - "romper* relaciones"
+    - "ruptura de relaciones"
+    - "extradicion"
+    - "extradit*"
+    - "acuerdo comercial"
+    - "libre comercio"
+    - "trade (deal|agreement)"
+    - "embargo"
+    - "onu"
+    - "consejo de seguridad"
+    - "security council"
+    - "united nations"
+    - "naciones unidas"
+    - "oea"
+    - "cumbre de presidentes"
+    - "summit"
+    - "deportacion*"
+    - "deport(s|ed|ing|ation|ations|ee|ees)?"
+    - "omc"
+    - "wto"
+    - "cij"
+    - "icj"
+    - "la haya"
+    - "corte internacional"
+    - "tribunal internacional"
+    - "boicot diplomatico"
+    - "diplomatic boycott"
+    # strong IR institutions (added 2026-09-30): sports-looking wording next to one of these is politics
+    - "mercosur"
+    - "mercosul"
+    - "celac"
+    - "comunidad andina"
+    - "comunidade andina"
+    - "andean community"
+    - "fmi"
+    - "fondo monetario"
+    - "imf"
+    - "brics"
+    - "alba-tcp"
+    - "alianza del pacifico"
+    - "caricom"
+    - "sica"
+    - "cidh"
+    - "corte idh"
+    - "oas"
+    - "organizacion de (los )?estados americanos"
+    - "casa blanca"
+    - "white house"
+    - "casa branca"
+    - "departamento de estado"
+  body_excludes:                      # override terms that do NOT count when a sports governing body is present
+    - "sanciones"
+    - "sancion (economica|financiera|comercial|diplomatica|internacional|contra)"
+    - "sancoes"
+    - "sanctions"
+    - "sanctioned"
+    - "sancions"
+
+# Sports/culture are out of scope; a cheap pre-filter (optional) drops these before entity matching.
+out_of_scope_hint_terms:
+  es: ["fútbol", "futbol", "gol", "goleada", "mundial sub", "telenovela", "farándula", "horóscopo"]
+  pt: ["futebol", "gol", "novela", "horóscopo"]
+  en: ["football match", "soccer", "box office", "horoscope"]
+  fr: ["football", "match de", "horoscope"]
+
+# =============================================================================
+# 1. COUNTRIES (20 Latin American + Puerto Rico)
+# =============================================================================
+countries:
+
+  - code: MX
+    iso3: MEX
+    name: "México"
+    region: "Norteamérica"
+    aliases:
+      es: ["México", "Méjico", "Estados Unidos Mexicanos"]
+      pt: ["México"]
+      en: ["Mexico"]
+      fr: ["Mexique"]
+    demonyms:
+      es: ["mexicano", "mexicana", "mexicanos", "mexicanas"]
+      pt: ["mexicano", "mexicana", "mexicanos", "mexicanas"]
+      en: ["Mexican", "Mexicans"]
+      fr: ["mexicain", "mexicaine", "mexicains"]
+    metonyms: ["Palacio Nacional", "Cancillería mexicana", "SRE", "Senado mexicano", "Morena"]
+    weak_aliases: ["Palacio Nacional", "SRE", "Morena"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["SRE"]
+    stoplist_phrases: []
+    notes: >
+      "Nuevo México"/"New Mexico" and "Ciudad de México" are in global_stoplist_phrases.
+      "Golfo de México" is NOT stoplisted: the Gulf-of-America naming row is a real MX-US dispute (see `disputes`).
+
+  - code: GT
+    iso3: GTM
+    name: "Guatemala"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Guatemala"]
+      pt: ["Guatemala"]
+      en: ["Guatemala"]
+      fr: ["Guatemala"]
+    demonyms:
+      es: ["guatemalteco", "guatemalteca", "guatemaltecos", "guatemaltecas", "chapín"]
+      pt: ["guatemalteco", "guatemalteca"]
+      en: ["Guatemalan", "Guatemalans"]
+      fr: ["guatémaltèque", "guatémaltèques"]
+    metonyms: []
+    weak_aliases: ["chapín"]
+    needs_word_boundary: true
+    stoplist_phrases: ["Ciudad de Guatemala", "Guatemala City"]
+    notes: "City-level 'Ciudad de Guatemala' is domestic news."
+
+  - code: HN
+    iso3: HND
+    name: "Honduras"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Honduras"]
+      pt: ["Honduras"]
+      en: ["Honduras"]
+      fr: ["Honduras"]
+    demonyms:
+      es: ["hondureño", "hondureña", "hondureños", "hondureñas", "catracho", "catracha"]
+      pt: ["hondurenho", "hondurenha", "hondurenhos"]
+      en: ["Honduran", "Hondurans"]
+      fr: ["hondurien", "hondurienne", "honduriens"]
+    metonyms: ["Tegucigalpa"]
+    weak_aliases: ["Tegucigalpa", "catracho", "catracha"]
+    needs_word_boundary: true
+    stoplist_phrases: ["Honduras Británica", "British Honduras", "Golfo de Honduras", "Gulf of Honduras"]
+    notes: "Tegucigalpa is weak: most Tegucigalpa headlines are local crime/city news (see Prototipo example)."
+
+  - code: SV
+    iso3: SLV
+    name: "El Salvador"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["El Salvador"]
+      pt: ["El Salvador"]
+      en: ["El Salvador"]
+      fr: ["Le Salvador", "El Salvador"]
+    demonyms:
+      es: ["salvadoreño", "salvadoreña", "salvadoreños", "salvadoreñas", "guanaco"]
+      pt: ["salvadorenho", "salvadorenha", "salvadorenhos"]
+      en: ["Salvadoran", "Salvadorean", "Salvadorans"]
+      fr: ["salvadorien", "salvadorienne", "salvadoriens"]
+    metonyms: ["San Salvador", "CECOT"]
+    weak_aliases: ["guanaco", "CECOT", "San Salvador"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["CECOT"]
+    stoplist_phrases: ["San Salvador de Jujuy", "Salvador de Bahía", "Salvador de Bahia", "Salvador Dalí", "Salvador Allende", "Salvador Sobral", "Salvador Nasralla", "Salvador Illa", "Salvador Cienfuegos"]
+    notes: >
+      NEVER alias bare "Salvador" (Salvador de Bahía, given names, Allende). Only the full "El Salvador".
+      CECOT (mega-prison) is weak: it signals El Salvador but many CECOT stories are foreign-litigation
+      (see test_headlines borderline: Venezuelans suing airlines).
+
+  - code: NI
+    iso3: NIC
+    name: "Nicaragua"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Nicaragua"]
+      pt: ["Nicarágua"]
+      en: ["Nicaragua"]
+      fr: ["Nicaragua"]
+    demonyms:
+      es: ["nicaragüense", "nicaragüenses", "nica"]
+      pt: ["nicaraguense", "nicaraguenses"]
+      en: ["Nicaraguan", "Nicaraguans"]
+      fr: ["nicaraguayen", "nicaraguayenne"]
+    metonyms: ["Managua", "El Carmen"]
+    weak_aliases: ["nica", "El Carmen"]
+    needs_word_boundary: true
+    stoplist_phrases: []
+    notes: "Bare 'nica' is weak (short, colloquial, Costa Rica 'nica' also used for Nicaraguan migrants)."
+
+  - code: CR
+    iso3: CRI
+    name: "Costa Rica"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Costa Rica"]
+      pt: ["Costa Rica"]
+      en: ["Costa Rica"]
+      fr: ["Costa Rica"]
+    demonyms:
+      es: ["costarricense", "costarricenses", "tico", "tica", "ticos", "ticas"]
+      pt: ["costarriquenho", "costarriquenha", "costarriquenhos"]
+      en: ["Costa Rican", "Costa Ricans"]
+      fr: ["costaricien", "costaricienne", "costaricaine"]
+    metonyms: ["Zapote", "Casa Presidencial de Costa Rica"]
+    weak_aliases: ["tico", "tica", "ticos", "ticas", "Zapote"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["Zapote"]
+    stoplist_phrases: []
+    notes: "'tico/tica' is weak; bare 'San José' is NOT an alias (California, Uruguay dept.)."
+
+  - code: PA
+    iso3: PAN
+    name: "Panamá"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Panamá"]
+      pt: ["Panamá"]
+      en: ["Panama"]
+      fr: ["Panama"]
+    demonyms:
+      es: ["panameño", "panameña", "panameños", "panameñas"]
+      pt: ["panamenho", "panamenha", "panamenhos"]
+      en: ["Panamanian", "Panamanians"]
+      fr: ["panaméen", "panaméenne", "panaméens"]
+    metonyms: ["Palacio de las Garzas", "Canal de Panamá", "Panama Canal"]
+    weak_aliases: ["Palacio de las Garzas"]
+    needs_word_boundary: true
+    stoplist_phrases: ["Panama Papers", "Papeles de Panamá", "Panama City Beach", "Panama City, Florida", "sombrero panamá", "Panama Jack"]
+    notes: >
+      DECISION: "Panama Papers"/"Papeles de Panamá" are stoplisted (they almost always refer to the 2016
+      leak/trial, not to Panama-the-state). The Canal is NOT stoplisted: US-Panama canal talk is core IR
+      (see `disputes`). "Ciudad de Panamá" is fine (capital-level diplomacy) and is not stoplisted.
+
+  - code: CU
+    iso3: CUB
+    name: "Cuba"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Cuba"]
+      pt: ["Cuba"]
+      en: ["Cuba"]
+      fr: ["Cuba"]
+    demonyms:
+      es: ["cubano", "cubana", "cubanos", "cubanas"]
+      pt: ["cubano", "cubana", "cubanos", "cubanas"]
+      en: ["Cuban", "Cubans"]
+      fr: ["cubain", "cubaine", "cubains"]
+    metonyms: ["La Habana", "Havana", "Habana"]
+    weak_aliases: ["Habana"]
+    needs_word_boundary: true
+    stoplist_phrases: ["Cuba Gooding", "Cuba Libre", "Cuba, New York", "Havana Club"]
+    notes: "Guantánamo is ambiguous (Cuban province vs US naval base) — handled in `disputes`, not as a Cuba alias."
+
+  - code: DO
+    iso3: DOM
+    name: "República Dominicana"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["República Dominicana", "Rep. Dominicana", "R. Dominicana", "RD"]
+      pt: ["República Dominicana"]
+      en: ["Dominican Republic"]
+      fr: ["République dominicaine"]
+    demonyms:
+      es: ["dominicano", "dominicana", "dominicanos", "dominicanas"]
+      pt: ["dominicano", "dominicana", "dominicanos"]
+      en: ["Dominican", "Dominicans"]
+      fr: ["dominicain", "dominicaine", "dominicains"]
+    metonyms: ["Santo Domingo"]
+    weak_aliases: ["RD", "Dominican", "Dominicans", "dominicain", "dominicaine", "dominicains", "Santo Domingo"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["RD", "Dominican", "Dominicans"]
+    stoplist_phrases: ["Dominica", "Orden Dominicana", "Dominican Order", "Dominican Friars"]
+    notes: >
+      "Dominica" (a different country) is stoplisted and word-boundary prevents "Dominica" matching
+      "dominicano". English "Dominican"/French "dominicain" are ambiguous (Dominica, friars) => weak.
+      'RD' is case-sensitive and weak.
+
+  - code: HT
+    iso3: HTI
+    name: "Haití"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Haití"]
+      pt: ["Haiti"]
+      en: ["Haiti"]
+      fr: ["Haïti"]
+    demonyms:
+      es: ["haitiano", "haitiana", "haitianos", "haitianas"]
+      pt: ["haitiano", "haitiana", "haitianos"]
+      en: ["Haitian", "Haitians"]
+      fr: ["haïtien", "haïtienne", "haïtiens"]
+    metonyms: ["Puerto Príncipe", "Port-au-Prince"]
+    weak_aliases: ["Puerto Príncipe", "Port-au-Prince"]
+    needs_word_boundary: true
+    stoplist_phrases: []
+    notes: "Accent folding makes Haití/Haïti/Haiti identical. Gang-suppression/security-mission stories are IR (UN/US/Kenya) but use `ir_terms`."
+
+  - code: PR
+    iso3: PRI
+    name: "Puerto Rico"
+    region: "Centroamérica + Caribe"
+    aliases:
+      es: ["Puerto Rico"]
+      pt: ["Porto Rico"]
+      en: ["Puerto Rico"]
+      fr: ["Porto Rico"]
+    demonyms:
+      es: ["puertorriqueño", "puertorriqueña", "puertorriqueños", "puertorriqueñas", "boricua", "boricuas"]
+      pt: ["porto-riquenho", "porto-riquenha"]
+      en: ["Puerto Rican", "Puerto Ricans"]
+      fr: ["portoricain", "portoricaine"]
+    metonyms: ["La Fortaleza", "Junta de Supervisión Fiscal"]
+    weak_aliases: ["boricua", "boricuas", "La Fortaleza"]
+    needs_word_boundary: true
+    stoplist_phrases: []
+    notes: >
+      US unincorporated territory: no foreign ministry. PR + US is federal/domestic, so meta.puerto_rico_us_rule
+      applies (needs an ir_term). PR-Dominican Republic / PR-Cuba / PR-Venezuela pairs ARE Tier 1.
+
+  - code: AR
+    iso3: ARG
+    name: "Argentina"
+    region: "Sudamérica"
+    aliases:
+      es: ["Argentina"]
+      pt: ["Argentina"]
+      en: ["Argentina"]
+      fr: ["Argentine"]
+    demonyms:
+      es: ["argentino", "argentina", "argentinos", "argentinas"]
+      pt: ["argentino", "argentina", "argentinos", "argentinas"]
+      en: ["Argentine", "Argentinian", "Argentines", "Argentinians"]
+      fr: ["argentin", "argentine", "argentins"]
+    metonyms: ["Casa Rosada", "Cancillería argentina", "Buenos Aires"]
+    weak_aliases: ["Buenos Aires"]
+    needs_word_boundary: true
+    stoplist_phrases: []
+    notes: "French 'Argentine' = Argentina (no collision). Malvinas/Falklands: see `disputes`."
+
+  - code: BO
+    iso3: BOL
+    name: "Bolivia"
+    region: "Sudamérica"
+    aliases:
+      es: ["Bolivia"]
+      pt: ["Bolívia"]
+      en: ["Bolivia"]
+      fr: ["Bolivie"]
+    demonyms:
+      es: ["boliviano", "boliviana", "bolivianos", "bolivianas"]
+      pt: ["boliviano", "boliviana", "bolivianos"]
+      en: ["Bolivian", "Bolivians"]
+      fr: ["bolivien", "bolivienne", "boliviens"]
+    metonyms: ["Casa Grande del Pueblo", "Palacio Quemado"]
+    weak_aliases: ["Casa Grande del Pueblo", "Palacio Quemado"]
+    needs_word_boundary: true
+    stoplist_phrases: []
+    notes: "Bare 'La Paz' is NOT an alias (peace; La Paz BCS Mexico; La Paz Spain). Bolivia-Chile 'salida al mar' in `disputes`."
+
+  - code: BR
+    iso3: BRA
+    name: "Brasil"
+    region: "Sudamérica"
+    aliases:
+      es: ["Brasil"]
+      pt: ["Brasil"]
+      en: ["Brazil"]
+      fr: ["Brésil"]
+    demonyms:
+      es: ["brasileño", "brasileña", "brasileños", "brasileñas", "brasilero", "brasilera"]
+      pt: ["brasileiro", "brasileira", "brasileiros", "brasileiras"]
+      en: ["Brazilian", "Brazilians"]
+      fr: ["brésilien", "brésilienne", "brésiliens"]
+    metonyms: ["Brasilia", "Itamaraty", "Planalto", "Palácio do Planalto"]
+    weak_aliases: ["Planalto"]
+    needs_word_boundary: true
+    stoplist_phrases: ["Brasil de Fato", "Brasil Paralelo", "Brazil nut"]
+    notes: >
+      Brazil general election: first round 2026-10-04. "Brasil" is the same string in es/pt so
+      language-agnostic. 'Itamaraty' = foreign ministry (strong IR signal, treated as a metonym not weak).
+
+  - code: CL
+    iso3: CHL
+    name: "Chile"
+    region: "Sudamérica"
+    aliases:
+      es: ["Chile"]
+      pt: ["Chile"]
+      en: ["Chile"]
+      fr: ["Chili"]
+    demonyms:
+      es: ["chileno", "chilena", "chilenos", "chilenas"]
+      pt: ["chileno", "chilena", "chilenos", "chilenas"]
+      en: ["Chilean", "Chileans"]
+      fr: ["chilien", "chilienne", "chiliens"]
+    metonyms: ["La Moneda", "Cancillería chilena", "Santiago de Chile"]
+    weak_aliases: ["Chili", "La Moneda"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["Chile", "Chili"]
+    stoplist_phrases: ["chile con carne", "chili con carne", "chile relleno", "chile en nogada", "chiles en nogada", "chile pepper"]
+    notes: >
+      Lowercase Spanish "chile" = chili pepper (Mexican food stories): 'Chile' is case-sensitive so
+      "chile" never matches. French "Chili" collides with English "chili" (food): case-sensitive + weak.
+      Title-cased/ALL-CAPS food headlines are still possible; covered by stoplist_phrases.
+
+  - code: CO
+    iso3: COL
+    name: "Colombia"
+    region: "Sudamérica"
+    aliases:
+      es: ["Colombia"]
+      pt: ["Colômbia"]
+      en: ["Colombia"]
+      fr: ["Colombie"]
+    demonyms:
+      es: ["colombiano", "colombiana", "colombianos", "colombianas"]
+      pt: ["colombiano", "colombiana", "colombianos"]
+      en: ["Colombian", "Colombians"]
+      fr: ["colombien", "colombienne", "colombiens"]
+    metonyms: ["Casa de Nariño", "Cancillería colombiana", "Bogotá"]
+    weak_aliases: ["Casa de Nariño", "Bogotá"]
+    needs_word_boundary: true
+    stoplist_phrases: ["Colombia Británica", "British Columbia", "Colombie-Britannique", "Colômbia Britânica"]
+    notes: "Matching is exact after accent folding, so 'Columbia'/'District of Columbia' do NOT match 'Colombia'."
+
+  - code: EC
+    iso3: ECU
+    name: "Ecuador"
+    region: "Sudamérica"
+    aliases:
+      es: ["Ecuador"]
+      pt: ["Equador"]
+      en: ["Ecuador"]
+      fr: ["Équateur"]
+    demonyms:
+      es: ["ecuatoriano", "ecuatoriana", "ecuatorianos", "ecuatorianas"]
+      pt: ["equatoriano", "equatoriana", "equatorianos"]
+      en: ["Ecuadorian", "Ecuadorean", "Ecuadorians"]
+      fr: ["équatorien", "équatorienne", "équatoriens"]
+    metonyms: ["Palacio de Carondelet", "Carondelet", "Quito"]
+    weak_aliases: ["Équateur", "équatorien", "équatorienne", "équatoriens", "Carondelet", "Quito"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["Equador", "Équateur"]
+    stoplist_phrases: ["Guinea Ecuatorial", "Equatorial Guinea", "Guinée équatoriale", "Guiné Equatorial"]
+    notes: >
+      Portuguese "equador" (lowercase) = the equator; French "Équateur" is also a DR-Congo province and the
+      equator => weak. "Ecuatorial" never matches "Ecuador" (whole-token match).
+
+  - code: PY
+    iso3: PRY
+    name: "Paraguay"
+    region: "Sudamérica"
+    aliases:
+      es: ["Paraguay"]
+      pt: ["Paraguai"]
+      en: ["Paraguay"]
+      fr: ["Paraguay"]
+    demonyms:
+      es: ["paraguayo", "paraguaya", "paraguayos", "paraguayas"]
+      pt: ["paraguaio", "paraguaia", "paraguaios"]
+      en: ["Paraguayan", "Paraguayans"]
+      fr: ["paraguayen", "paraguayenne", "paraguayens"]
+    metonyms: ["Mburuvicha Róga", "Itaipú", "Asunción"]
+    weak_aliases: ["Mburuvicha Róga", "Itaipú", "Itaipu", "Asunción"]
+    needs_word_boundary: true
+    stoplist_phrases: []
+    notes: "Itaipú (BR-PY binational dam) is a weak signal: IR for energy-treaty stories, domestic otherwise."
+
+  - code: PE
+    iso3: PER
+    name: "Perú"
+    region: "Sudamérica"
+    aliases:
+      es: ["Perú"]
+      pt: ["Peru"]
+      en: ["Peru"]
+      fr: ["Pérou"]
+    demonyms:
+      es: ["peruano", "peruana", "peruanos", "peruanas"]
+      pt: ["peruano", "peruana", "peruanos", "peruanas"]
+      en: ["Peruvian", "Peruvians"]
+      fr: ["péruvien", "péruvienne", "péruviens"]
+    metonyms: ["Torre Tagle", "Palacio de Gobierno del Perú", "Lima"]
+    weak_aliases: ["Lima"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["Peru", "Lima"]
+    stoplist_phrases: ["Peru, Illinois", "Peru, Indiana"]
+    notes: >
+      Accent folding makes English/Portuguese "Peru" == "Perú". Portuguese lowercase "peru" = turkey
+      (the bird) => 'Peru' is case-sensitive. Torre Tagle = foreign ministry.
+
+  - code: UY
+    iso3: URY
+    name: "Uruguay"
+    region: "Sudamérica"
+    aliases:
+      es: ["Uruguay"]
+      pt: ["Uruguai"]
+      en: ["Uruguay"]
+      fr: ["Uruguay"]
+    demonyms:
+      es: ["uruguayo", "uruguaya", "uruguayos", "uruguayas"]
+      pt: ["uruguaio", "uruguaia", "uruguaios"]
+      en: ["Uruguayan", "Uruguayans"]
+      fr: ["uruguayen", "uruguayenne", "uruguayens"]
+    metonyms: ["Torre Ejecutiva", "Montevideo"]
+    weak_aliases: ["Torre Ejecutiva", "Montevideo"]
+    needs_word_boundary: true
+    stoplist_phrases: ["Ronda Uruguay", "Uruguay Round"]
+    notes: "'Ronda Uruguay' = 1986-94 GATT round (historic)."
+
+  - code: VE
+    iso3: VEN
+    name: "Venezuela"
+    region: "Sudamérica"
+    aliases:
+      es: ["Venezuela"]
+      pt: ["Venezuela"]
+      en: ["Venezuela"]
+      fr: ["Venezuela"]
+    demonyms:
+      es: ["venezolano", "venezolana", "venezolanos", "venezolanas"]
+      pt: ["venezuelano", "venezuelana", "venezuelanos", "venezuelanas"]
+      en: ["Venezuelan", "Venezuelans"]
+      fr: ["vénézuélien", "vénézuélienne", "vénézuéliens"]
+    metonyms: ["Miraflores", "Caracas", "MPPRE", "Cancillería venezolana"]
+    weak_aliases: ["Miraflores"]
+    needs_word_boundary: true
+    case_sensitive_aliases: ["MPPRE"]
+    stoplist_phrases: []
+    notes: >
+      "Miraflores" is weak (also a district of Lima). Governance is contested/transitional: Delcy Rodríguez is presidenta encargada since the 2026-01-03
+      US capture of Maduro. Keep 'Asamblea Nacional 2015' vs 'AN 2026' in mind (see leaders). Essequibo in `disputes`.
+
+# =============================================================================
+# 1b. REGION / BLOC TERMS  (count as the LatAm group "LATAM" ONLY in combination with a
+#     foreign group => Tier 1; never Tier 2 on their own)
+# =============================================================================
+regional_terms:
+  es: ["América Latina", "Latinoamérica", "Centroamérica", "Sudamérica", "Suramérica", "Hemisferio Occidental", "Cono Sur", "el Caribe"]
+  pt: ["América Latina", "América Central", "América do Sul", "Hemisfério Ocidental", "Cone Sul"]
+  en: ["Latin America", "Latin American", "Central America", "South America", "Western Hemisphere"]
+  fr: ["Amérique latine", "Amérique centrale", "Amérique du Sud", "Hémisphère occidental"]
+  case_sensitive: ["el Caribe"]
+  notes: "'Caribe' alone is ambiguous (weather/cruise stories): only 'el Caribe' + a foreign group."
+
+# =============================================================================
+# 1c. DISPUTES / TOPIC ALIASES – one token that implies TWO groups (=> Tier 1 by itself unless weak)
+# =============================================================================
+disputes:
+  - {terms: ["Malvinas", "Falklands", "Falkland Islands", "Islas Malvinas", "Ilhas Malvinas", "Îles Malouines"], implies: [AR, UK], weak: false, note: "Sovereignty + oil dispute (Sept 2026: Argentina threatens arbitration/ITLOS)."}
+  - {terms: ["Golfo de América", "Gulf of America", "Golfo de México", "Gulf of Mexico"], implies: [MX, US], weak: true, note: "Naming row; counts only with another signal."}
+  - {terms: ["Canal de Panamá", "Panama Canal"], implies: [PA, US], weak: true, note: "US-Panama canal issue; weak because many canal headlines are domestic (drought, tolls)."}
+  - {terms: ["Esequibo", "Essequibo", "Guayana Esequiba"], implies: [VE, GY], weak: false, note: "Venezuela-Guyana territorial dispute (ICJ)."}
+  - {terms: ["salida al mar", "Silala"], implies: [BO, CL], weak: true, note: "Bolivia-Chile; 'salida al mar' can be used elsewhere."}
+  - {terms: ["Guantánamo", "Guantanamo"], implies: [CU, US], weak: true, note: "Naval base (US-Cuba) vs detention camp (US domestic)."}
+  - {terms: ["Escudo de las Américas", "Shield of the Americas", "Escudo das Américas"], implies: [US], weak: false, note: "US-led security alliance (2026); also listed under institutions."}
+
+# =============================================================================
+# 2. LEADERS — as of 2026-09-30.
+#    status: VERIFIED (office + holder read in a 2026-09-30 web source) | PARTIAL (holder verified, detail such as
+#            since-date / full name not) | UNVERIFIED (could not confirm; do not use for matching without review).
+#    since_verified: false => the `since` date is from general knowledge, NOT re-verified today.
+#    surname_only_safe=true => the bare surname may be used as an alias (resolves to the country).
+#    Full evidence table: leaders_verification.md
+# =============================================================================
+leaders:
+
+  MX:
+    head_of_state:
+      - {name: "Claudia Sheinbaum Pardo", title: "Presidenta", since: "2024-10-01", since_verified: false, status: VERIFIED, aliases: ["Claudia Sheinbaum", "Sheinbaum", "presidenta de México"], surname_only_safe: true, src: "https://lasillarota.com/nacion/2026/9/18/sheinbaum-busco-en-llamada-con-trump-mecanismo-para-reducir-aranceles-528914.html"}
+    foreign_minister:
+      - {name: "Roberto Velasco Álvarez", title: "Secretario de Relaciones Exteriores (canciller)", since: "2026-04-08", status: VERIFIED, aliases: ["Roberto Velasco", "canciller Velasco"], surname_only_safe: false, note: "Predecessor Juan Ramón de la Fuente resigned 2026-04-01 (health). 'Velasco' is a common surname.", src: "https://www.infobae.com/mexico/2026/04/08/roberto-velasco-es-ratificado-como-canciller-tras-comparecer-ante-el-senado/"}
+    other_key:
+      - {name: "Marcelo Ebrard Casaubón", title: "Secretario de Economía (T-MEC negotiator)", aliases: ["Marcelo Ebrard", "Ebrard"], surname_only_safe: true, status: VERIFIED, src: "https://www.infobae.com/mexico/2026/09/30/marcelo-ebrard-participa-en-el-g20-de-comercio-mexico-se-sienta-con-estados-unidos-y-europa/"}
+      - {name: "Andrés Manuel López Beltrán (Andy)", title: "Morena figure, son of ex-president López Obrador; subject of NYT 2026-09-29 report (not an office-holder)", aliases: ["Andy López Beltrán", "López Beltrán", "Andy López"], surname_only_safe: false, status: VERIFIED, src: "https://www.infobae.com/mexico/2026/09/29/andres-manuel-lopez-beltran-en-la-mira-de-eeuu-agencias-analizan-posibles-acusaciones-en-su-contra-destapa-nyt/"}
+
+  GT:
+    head_of_state:
+      - {name: "Bernardo Arévalo de León", title: "Presidente", since: "2024-01-14", since_verified: false, status: VERIFIED, aliases: ["Bernardo Arévalo", "presidente Arévalo"], surname_only_safe: false, note: "'Arévalo' alone is ambiguous (Juan José Arévalo, place names). Skipped UNGA 2026.", src: "https://www.prensalibre.com/guatemala/politica/arevalo-no-asistira-a-asamblea-de-la-onu-mientras-congreso-discute-decreto-sobre-combustibles/"}
+    foreign_minister:
+      - {name: "Carlos Ramiro Martínez", title: "Ministro de Relaciones Exteriores (second surname not confirmed)", since: "2024 (UNVERIFIED exact)", since_verified: false, status: PARTIAL, aliases: ["Carlos Ramiro Martínez", "canciller Martínez"], surname_only_safe: false, src: "https://www.infobae.com/guatemala/2026/07/03/el-presidente-bernardo-arevalo-ratifica-el-convenio-marco-de-cooperacion-entre-guatemala-y-panama/"}
+
+  HN:
+    head_of_state:
+      - {name: "Nasry Juan Asfura Zablah", title: "Presidente (2026-2030)", since: "2026-01-27", status: VERIFIED, aliases: ["Nasry Asfura", "Asfura", "Tito Asfura", "presidente Asfura"], surname_only_safe: true, src: "https://elpais.com/america/2026-01-27/el-conservador-nasry-asfura-asume-su-cargo-como-nuevo-presidente-de-honduras.html"}
+    foreign_minister:
+      - {name: "Mireya Agüero de Corrales", title: "Secretaria de Relaciones Exteriores y Cooperación Internacional", since: "2026-01 (sworn in after 2026-01-27)", status: VERIFIED, aliases: ["Mireya Agüero", "canciller Agüero"], surname_only_safe: false, src: "https://www.sreci.gob.hn/node/2422"}
+    other_key:
+      - {name: "Juan Orlando Hernández", title: "Ex-presidente; pardoned by Trump, returned to Honduras (BBC Mundo, Jul 2026 - headline-level evidence only)", aliases: ["Juan Orlando Hernández", "Juan Orlando", "JOH"], case_sensitive_aliases: ["JOH"], surname_only_safe: false, status: PARTIAL, src: "https://www.bbc.com/mundo/articles/cwyrqpn1kzro"}
+
+  SV:
+    head_of_state:
+      - {name: "Nayib Bukele Ortez", title: "Presidente (seeking another term; general elections called for 2027-02-28)", since: "2019-06-01 (current term 2024-06-01)", since_verified: false, status: VERIFIED, aliases: ["Nayib Bukele", "Bukele", "presidente Bukele"], surname_only_safe: true, src: "https://cnnespanol.cnn.com/2026/09/30/latinoamerica/bukele-elecciones-presidenciales-el-salvador-orix"}
+    foreign_minister:
+      - {name: "Alexandra Hill Tinoco", title: "Ministra de Relaciones Exteriores", since: "2024-06-01", since_verified: false, status: VERIFIED, aliases: ["Alexandra Hill", "canciller Hill", "Hill Tinoco"], surname_only_safe: false, src: "https://www.infobae.com/el-salvador/2026/09/28/canciller-salvadorena-pide-reformar-la-onu-para-responder-a-crisis-que-que-ya-no-conoce-fronteras/"}
+
+  NI:
+    head_of_state:
+      - {name: "Daniel Ortega Saavedra", title: "Copresidente (dual presidency via constitutional reform)", since: "UNVERIFIED (co-presidency date)", status: PARTIAL, aliases: ["Daniel Ortega", "Ortega", "copresidente Ortega", "Comandante Ortega"], surname_only_safe: true, note: "'Ortega' is a common surname but in LatAm IR headlines resolves to NI. Reform passed first reading 2026-09-01; final ratification scheduled 2027-01-18 (La Prensa NI summary).", src: "https://www.latimes.com/world-nation/story/2026-07-21/nicaraguas-president-moves-to-extend-20-year-rule-says-no-elections-anytime-soon"}
+      - {name: "Rosario Murillo", title: "Copresidenta", since: "UNVERIFIED (co-presidency date)", status: PARTIAL, aliases: ["Rosario Murillo", "Murillo", "copresidenta Murillo"], surname_only_safe: false, src: "https://noticias.asamblea.gob.ni/pueblo-presidente-conoce-informe-sobre-reforma-constitucional/"}
+    foreign_minister:
+      - {name: "Valdrack Ludwing Jaentschke Whitaker", title: "Canciller (one summary said 'cocanciller' - exact title UNVERIFIED)", since: "UNVERIFIED", status: PARTIAL, aliases: ["Valdrack Jaentschke", "Jaentschke"], surname_only_safe: true, src: "https://www.laprensani.com/2026/09/30/politica/3792560-eliminacion-oposicion-elecciones-cuerpo-diplomatico"}
+
+  CR:
+    head_of_state:
+      - {name: "Laura Fernández Delgado", title: "Presidenta", since: "2026-05-08", status: VERIFIED, aliases: ["Laura Fernández", "presidenta Fernández"], surname_only_safe: false, note: "'Fernández' alone ambiguous (Alberto/Cristina/Máximo). Fired canciller Tovar 2026-09-24 over a Trump meeting (Escudo de las Américas).", src: "https://www.infobae.com/costa-rica/2026/09/24/laura-fernandez-destituye-al-canciller-de-costa-rica-por-asistir-a-una-reunion-con-donald-trump-sin-informarle/"}
+    foreign_minister:
+      - {name: "Indiana Trejos Gallo", title: "Ministra de Relaciones Exteriores y Culto (INTERIM; also Comercio Exterior)", since: "2026-09-24", status: VERIFIED, aliases: ["Indiana Trejos", "canciller Trejos", "Trejos Gallo"], surname_only_safe: false, src: "https://observador.cr/presidenta-laura-fernandez-destituye-al-canciller-manuel-tovar/"}
+    former:
+      - {name: "Manuel Tovar Rivera", title: "Ex-canciller (2026-05-08 to 2026-09-24)", aliases: ["Manuel Tovar", "Tovar Rivera"], surname_only_safe: false, status: VERIFIED}
+
+  PA:
+    head_of_state:
+      - {name: "José Raúl Mulino Quintero", title: "Presidente", since: "2024-07-01", since_verified: false, status: VERIFIED, aliases: ["José Raúl Mulino", "Raúl Mulino", "Mulino", "presidente Mulino"], surname_only_safe: true, src: "https://www.ecotvpanama.com/nacionales/panama-queda-la-parte-baja-del-ranking-aprobacion-presidencial-n6091784"}
+    foreign_minister:
+      - {name: "Javier Eduardo Martínez-Acha Vásquez", title: "Ministro de Relaciones Exteriores", since: "2024-07-01", since_verified: false, status: VERIFIED, aliases: ["Javier Martínez-Acha", "Martínez-Acha", "canciller Martínez-Acha"], surname_only_safe: true, src: "https://mire.gob.pa/canciller-martinez-acha-vasquez-defiende-solucion-pacifica-de-las-controversias-al-termino-en-panama-de-encuentro-de-miembros-electos-del-consejo-de-seguridad-de-la-onu/"}
+
+  CU:
+    head_of_state:
+      - {name: "Miguel Mario Díaz-Canel Bermúdez", title: "Presidente", since: "2018-04-19", since_verified: false, status: VERIFIED, aliases: ["Miguel Díaz-Canel", "Díaz-Canel", "Diaz Canel", "presidente Díaz-Canel"], surname_only_safe: true, src: "https://www.presidencia.gob.cu/es/presidencia/intervenciones/programa-de-radio-criterio-compartido-conducido-por-miguel-mario-diaz-canel-bermudez-desde-los-estudios-de-radio-rebelde/"}
+    head_of_government:
+      - {name: "Manuel Marrero Cruz", title: "Primer ministro", since: "2019-12-21", since_verified: false, status: VERIFIED, aliases: ["Manuel Marrero", "Marrero Cruz"], surname_only_safe: false, src: "https://www.nodal.am/2026/09/cuba-el-primer-ministro-manuel-marrero-anuncio-la-ejecucion-del-plan-de-transformaciones-socioeconomicas-anunciado-a-mediados-de-ano/"}
+    foreign_minister:
+      - {name: "Bruno Rodríguez Parrilla", title: "Ministro de Relaciones Exteriores", since: "2009-03", since_verified: false, status: VERIFIED, aliases: ["Bruno Rodríguez", "Rodríguez Parrilla", "canciller Bruno Rodríguez"], surname_only_safe: false, src: "https://www.acn.cu/mundo/intervencion-del-canciller-bruno-rodriguez-parrilla-en-la-onu"}
+
+  DO:
+    head_of_state:
+      - {name: "Luis Abinader Corona", title: "Presidente", since: "2020-08-16", since_verified: false, status: VERIFIED, aliases: ["Luis Abinader", "Abinader", "presidente Abinader"], surname_only_safe: true, src: "https://25horasdenoticia.com/internacionales/bukele-abinader-y-fernandez-entre-los-primeros-puestos-de-mejor-imagen-de-presidentes-latinoamericanos/"}
+    foreign_minister:
+      - {name: "Víctor \"Ito\" Bisonó Haza", title: "Ministro de Relaciones Exteriores (Mirex)", since: "2026-08-16", status: VERIFIED, aliases: ["Víctor Bisonó", "Ito Bisonó", "Bisonó", "canciller Bisonó"], surname_only_safe: true, src: "https://presidencia.gob.do/noticias/victor-ito-bisono-asumira-como-nuevo-canciller-de-republica-dominicana-el-presidente"}
+    former:
+      - {name: "Roberto Álvarez", title: "Ex-canciller (to 2026-08-16)", aliases: ["Roberto Álvarez"], surname_only_safe: false, status: VERIFIED}
+
+  HT:
+    head_of_state:
+      - {name: "(none)", title: "No president: Consejo Presidencial de Transición ended 2026-02-07; executive power passed to the Prime Minister", since: "2026-02-07", status: VERIFIED, aliases: [], surname_only_safe: false, src: "https://efe.com/mundo/2026-02-07/consejo-presidencial-haiti-entrega-mandato-primer-ministro-alix-didier-fils-aime/"}
+    head_of_government:
+      - {name: "Alix Didier Fils-Aimé", title: "Primer ministro (de facto jefe del Ejecutivo); elections planned 2026-12-13", since: "2024-11 as PM (from memory); sole executive since 2026-02-07", since_verified: false, status: VERIFIED, aliases: ["Fils-Aimé", "Alix Didier Fils-Aimé", "primer ministro Fils-Aimé"], surname_only_safe: true, src: "https://www.infobae.com/america/agencias/2026/09/20/primer-ministro-de-haiti-abogara-en-la-onu-por-plan-de-seguridad-para-celebrar-elecciones/"}
+    foreign_minister:
+      - {name: "Raina Forbin", title: "Ministre des Affaires étrangères et des Cultes", since: "2026-03-04", status: VERIFIED, aliases: ["Raina Forbin", "Forbin"], surname_only_safe: true, src: "https://lenouvelliste.com/article/264852/raina-forbin-installee-a-la-tete-du-ministere-des-affaires-etrangeres-promet-une-diplomatie-proactive"}
+    former:
+      - {name: "Laurent Saint-Cyr", title: "Last president of the Consejo Presidencial de Transición", aliases: ["Laurent Saint-Cyr"], surname_only_safe: false, status: VERIFIED}
+
+  PR:
+    head_of_state:
+      - {name: "Jenniffer González Colón", title: "Gobernadora (US territory; not a sovereign head of state)", since: "2025-01-02", since_verified: false, status: VERIFIED, aliases: ["Jenniffer González", "gobernadora de Puerto Rico", "gobernadora González"], surname_only_safe: false, src: "https://www.primerahora.com/noticias/gobierno-politica/notas/jenniffer-gonzalez-destaca-logros-en-las-finanzas-del-gobierno/"}
+    foreign_minister: []   # none - Puerto Rico has no foreign ministry
+
+  AR:
+    head_of_state:
+      - {name: "Javier Gerardo Milei", title: "Presidente", since: "2023-12-10", since_verified: false, status: VERIFIED, aliases: ["Javier Milei", "Milei", "presidente Milei"], surname_only_safe: true, src: "https://www.casarosada.gob.ar/informacion/discursos/51375-discurso-del-presidente-javier-milei-ante-la-81-sesion-de-la-asamblea-general-de-la-onu-en-nueva-york"}
+    foreign_minister:
+      - {name: "Pablo Quirno", title: "Ministro de Relaciones Exteriores, Comercio Internacional y Culto", since: "2025-10-28", status: VERIFIED, aliases: ["Pablo Quirno", "Quirno", "canciller Quirno"], surname_only_safe: true, src: "https://www.ambito.com/politica/oficializaron-la-designacion-pablo-quirno-como-nuevo-canciller-n6207054"}
+    other_key:
+      - {name: "Luis Caputo", title: "Ministro de Economía (seen in Apr 2026 La Nación; not re-verified as of 2026-09-30)", aliases: ["Luis Caputo", "Caputo"], surname_only_safe: true, status: PARTIAL, src: "https://www.lanacion.com.ar/economia/tras-el-respaldo-del-banco-mundial-luis-caputo-sumo-una-garantia-del-bid-por-us550-millones-para-nid17042026/"}
+
+  BO:
+    head_of_state:
+      - {name: "Rodrigo Paz Pereira", title: "Presidente (VP Edmand Lara disputed his remote governance during the UNGA trip, Sept 2026)", since: "2025-11-08", since_verified: false, status: VERIFIED, aliases: ["Rodrigo Paz", "presidente Rodrigo Paz", "Paz Pereira"], surname_only_safe: false, note: "'Paz' = peace: NEVER a bare alias.", src: "https://boliviaverifica.bo/explicador-quien-es-el-presidente-en-ejercicio-en-bolivia/"}
+      - {name: "Edmand Lara Montaño", title: "Vicepresidente (declared himself 'presidente en ejercicio' 2026-09-21; contested)", since: "2025-11-08", since_verified: false, status: VERIFIED, aliases: ["Edmand Lara", "vicepresidente Lara"], surname_only_safe: false, src: "https://www.infobae.com/america/america-latina/2026/09/24/crece-la-polemica-por-la-sucesion-constitucional-en-bolivia-tras-la-ausencia-de-rodrigo-paz-y-lara/"}
+    foreign_minister:
+      - {name: "Héctor Huanca", title: "Ministro de Relaciones Exteriores", since: "2026-08-03", status: VERIFIED, aliases: ["Héctor Huanca", "canciller Huanca"], surname_only_safe: false, note: "Predecessor Fernando Aramayo moved to Ministro de la Presidencia 2026-08-03. 'Huanca' is a common Andean surname.", src: "https://www.vision360.bo/noticias/2026/08/03/61198-fernando-aramayo-asume-como-ministro-de-la-presidencia-y-hector-huanca-es-posesionado-como-nuevo-canciller"}
+
+  BR:
+    head_of_state:
+      - {name: "Luiz Inácio Lula da Silva", title: "Presidente (candidate for re-election; 1st round 2026-10-04)", since: "2023-01-01", since_verified: false, status: VERIFIED, aliases: ["Lula da Silva", "Lula", "presidente Lula"], surname_only_safe: true, src: "https://g1.globo.com/politica/noticia/2026/09/22/em-discurso-na-onu-lula-defende-soberania-combate-ao-crime-organizado-regulacao-de-big-techs-e-critica-o-tarifaco.ghtml"}
+    foreign_minister:
+      - {name: "Mauro Luiz Iecker Vieira", title: "Ministro das Relações Exteriores (Itamaraty)", since: "2023-01-01", since_verified: false, status: VERIFIED, aliases: ["Mauro Vieira", "chanceler Mauro Vieira", "chanceler Vieira"], surname_only_safe: false, src: "https://www.gov.br/mre/en/composition/office-of-the-minister-of-foreign-affairs"}
+    other_key:
+      - {name: "Celso Amorim", title: "Assessor Especial da Presidência (met Wang Yi Sept 2026)", aliases: ["Celso Amorim", "Amorim"], surname_only_safe: true, status: VERIFIED, src: "https://www.mfa.gov.cn/mfa_eng/wjbzhd/202609/t20260919_12026460.html"}
+      - {name: "Flávio Bolsonaro", title: "PL candidate for president - main challenger", aliases: ["Flávio Bolsonaro", "Flavio Bolsonaro"], surname_only_safe: false, status: VERIFIED, src: "https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/30/candidatos-a-presidente-em-2026-quem-sao-numeros-e-partidos.ghtml"}
+      - {name: "Jair Bolsonaro", title: "Ex-presidente; serving 27y3m coup-plot sentence; moved to 'Papudinha' 2026-09-15", aliases: ["Jair Bolsonaro", "Bolsonaro", "bolsonarismo", "bolsonarista"], surname_only_safe: true, status: VERIFIED, note: "'Bolsonaro' alone is ambiguous between Jair/Flávio/Eduardo but always resolves to BR.", src: "https://www.infobae.com/america/america-latina/2026/09/25/jair-bolsonaro-retiro-su-pedido-a-la-corte-suprema-para-que-suspenda-la-condena-por-golpismo/"}
+      - {name: "Other 2026 candidates", title: "Ronaldo Caiado (PSD), Romeu Zema (Novo), Augusto Cury (Avante), Renan Santos (Missão) + others; 13 candidaturas deferidas; Pablo Marçal indeferida. Tarcísio de Freitas is NOT in the candidate list (UNVERIFIED what he is doing).", aliases: ["Ronaldo Caiado", "Caiado", "Romeu Zema", "Zema", "Renan Santos"], surname_only_safe: true, status: VERIFIED, src: "https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/30/candidatos-a-presidente-em-2026-quem-sao-numeros-e-partidos.ghtml"}
+
+  CL:
+    head_of_state:
+      - {name: "José Antonio Kast Rist", title: "Presidente", since: "2026-03-11", status: VERIFIED, aliases: ["José Antonio Kast", "Kast", "presidente Kast"], surname_only_safe: true, src: "https://elpais.com/chile/2026-03-11/quienes-son-los-ministros-subsecretarios-y-delegados-presidenciales-de-jose-antonio-kast.html"}
+    foreign_minister:
+      - {name: "José Francisco Pérez Mackenna", title: "Ministro de Relaciones Exteriores", since: "2026-03-11", status: VERIFIED, aliases: ["Francisco Pérez Mackenna", "Pérez Mackenna", "canciller Pérez Mackenna"], surname_only_safe: true, src: "https://www.minrel.gob.cl/sala-de-prensa/canciller-perez-mackenna-se-reunio-con-el-presidente-jose-antonio-kast-y-el"}
+    former:
+      - {name: "Gabriel Boric", title: "Ex-presidente (to 2026-03-11, inferred from Kast's inauguration)", aliases: ["Gabriel Boric", "Boric"], surname_only_safe: true, status: PARTIAL}
+
+  CO:
+    head_of_state:
+      - {name: "Abelardo de la Espriella", title: "Presidente (2026-2030)", since: "2026-08-07", status: VERIFIED, aliases: ["Abelardo de la Espriella", "De la Espriella", "presidente De la Espriella"], weak_aliases: ["Abelardo"], surname_only_safe: true, src: "https://www.eltiempo.com/politica/abelardo-de-la-espriella/posesion-de-abelardo-de-la-espriella-como-nuevo-presidente-de-colombia-hoy-7-de-agosto-siga-los-actos-protocolarios-en-cali-ultimas-noticias-3576902"}
+      - {name: "José Manuel Restrepo", title: "Vicepresidente", since: "2026-08-07", status: VERIFIED, aliases: ["José Manuel Restrepo"], surname_only_safe: false, src: "https://es.wikipedia.org/wiki/Investidura_presidencial_de_Abelardo_de_la_Espriella"}
+    foreign_minister:
+      - {name: "Omar Bula Escobar", title: "Ministro de Relaciones Exteriores (canciller)", since: "2026-08-07 (named 2026-07-08)", status: VERIFIED, aliases: ["Omar Bula Escobar", "Omar Bula", "canciller Bula"], surname_only_safe: false, note: "Some pre-inauguration (Aug 6) articles still call Rosa Yolanda Villavicencio 'canciller' - she was the outgoing Petro-era minister.", src: "https://www.cancilleria.gov.co/el-ministerio/ministro"}
+    former:
+      - {name: "Gustavo Petro", title: "Ex-presidente (to 2026-08-07); under investigation for alleged electoral interference", aliases: ["Gustavo Petro", "Petro", "petrismo", "petrista"], surname_only_safe: true, status: VERIFIED, src: "https://www1.folha.uol.com.br/mundo/2026/08/petro-deixa-esquerda-consolidada-na-colombia-mesmo-apos-patinar-em-agenda-de-reformas.shtml"}
+
+  EC:
+    head_of_state:
+      - {name: "Daniel Noboa Azín", title: "Presidente", since: "2023-11-23 (current term 2025-05-24)", since_verified: false, status: VERIFIED, aliases: ["Daniel Noboa", "Noboa", "presidente Noboa"], surname_only_safe: true, src: "https://www.eluniverso.com/noticias/politica/daniel-noboa-delegacion-ecuador-participa-asamblea-general-onu-nueva-york-nota/"}
+    foreign_minister:
+      - {name: "Roberto Kury Pesantes", title: "Ministro de Relaciones Exteriores y Movilidad Humana", since: "2026-06-08", status: VERIFIED, aliases: ["Roberto Kury", "Kury", "canciller Kury"], surname_only_safe: true, src: "https://www.state.gov/releases/office-of-the-spokesperson/2026/09/secretary-of-state-marco-rubio-and-ecuadorian-foreign-minister-roberto-kurydeliver-statements"}
+    former:
+      - {name: "Gabriela Sommerfeld", title: "Ex-canciller (resigned 2026-06-07)", aliases: ["Gabriela Sommerfeld", "Sommerfeld"], surname_only_safe: true, status: VERIFIED}
+
+  PY:
+    head_of_state:
+      - {name: "Santiago Peña Palacios", title: "Presidente", since: "2023-08-15", since_verified: false, status: VERIFIED, aliases: ["Santiago Peña", "presidente Peña", "Peña Palacios"], surname_only_safe: false, note: "'Peña' alone: very common surname (Peña Nieto) and 'peña' = rock - NEVER bare.", src: "https://www.abc.com.py/politica/2026/09/23/pena-defiende-en-onu-visita-a-venezuela-pide-por-taiwan-y-reapertura-de-ormuz/"}
+    foreign_minister:
+      - {name: "Rubén Ramírez Lezcano", title: "Ministro de Relaciones Exteriores", since: "2023-08-15", status: VERIFIED, aliases: ["Rubén Ramírez Lezcano", "Ramírez Lezcano", "Rubén Ramírez", "canciller Ramírez"], surname_only_safe: false, src: "https://en.wikipedia.org/wiki/Rub%C3%A9n_Ram%C3%ADrez_Lezcano"}
+
+  PE:
+    head_of_state:
+      - {name: "Keiko Sofía Fujimori Higuchi", title: "Presidenta (2026-2031)", since: "2026-07-28", status: VERIFIED, aliases: ["Keiko Fujimori", "Keiko", "presidenta Fujimori"], surname_only_safe: true, note: "'Fujimori' alone may be Alberto/Kenji; all resolve to PE.", src: "https://www.gob.pe/institucion/presidencia/noticias/1423625-presidenta-keiko-fujimori-tomo-juramento-a-su-primer-gabinete-liderado-por-luis-galarreta"}
+    head_of_government:
+      - {name: "Luis Fernando Galarreta Velarde", title: "Presidente del Consejo de Ministros (premier); also 1st VP", since: "2026-07-28", status: VERIFIED, aliases: ["Luis Galarreta", "Galarreta", "premier Galarreta"], surname_only_safe: true, src: "https://www.gob.pe/institucion/presidencia/noticias/1423625-presidenta-keiko-fujimori-tomo-juramento-a-su-primer-gabinete-liderado-por-luis-galarreta"}
+    foreign_minister:
+      - {name: "Carlos Espá y Garcés-Alvear", title: "Ministro de Relaciones Exteriores", since: "2026-07-28", status: VERIFIED, aliases: ["Carlos Espá", "Espá", "canciller Espá"], surname_only_safe: true, note: "One search summary printed 'Alfonso Carlos Espá'; the gob.pe text says 'Carlos Espá y Garcés-Alvear' (used).", src: "https://www.gob.pe/institucion/presidencia/noticias/1423625-presidenta-keiko-fujimori-tomo-juramento-a-su-primer-gabinete-liderado-por-luis-galarreta"}
+
+  UY:
+    head_of_state:
+      - {name: "Yamandú Orsi", title: "Presidente", since: "2025-03-01", status: VERIFIED, aliases: ["Yamandú Orsi", "Orsi", "presidente Orsi"], surname_only_safe: true, src: "https://www.gub.uy/presidencia/comunicacion/noticias/orsi-asamblea-general-naciones-unidas-discurso-2026"}
+    foreign_minister:
+      - {name: "Mario Lubetkin", title: "Ministro de Relaciones Exteriores", since: "2025-03-01", status: VERIFIED, aliases: ["Mario Lubetkin", "Lubetkin", "canciller Lubetkin"], surname_only_safe: true, src: "https://www.gub.uy/ministerio-relaciones-exteriores/comunicacion/noticias/asumio-canciller-mario-lubetkin-entre-visitas-internacionales-auspiciosas"}
+
+  VE:
+    head_of_state:
+      - {name: "Delcy Rodríguez Gómez", title: "Presidenta encargada (interim) since the US capture of Nicolás Maduro on 2026-01-03", since: "2026-01-03", status: VERIFIED, aliases: ["Delcy Rodríguez", "presidenta encargada", "presidenta interina", "Delcy"], weak_aliases: ["Delcy"], surname_only_safe: false, note: "'Rodríguez' alone is ambiguous (Jorge Rodríguez; Bruno Rodríguez of Cuba).", src: "https://www.rtve.es/noticias/20260924/delcy-rodriguez-asamblea-general-onu-discurso-cronica/17237890.shtml"}
+    foreign_minister:
+      - {name: "Félix Plasencia", title: "Ministro del Poder Popular de Relaciones y Comercio Exterior (merged ministry)", since: "2026-07-13 per ABC (an AFP/Diario Extra page carries a 2026-09-30 date; exact decree date NOT reconciled)", status: PARTIAL, aliases: ["Félix Plasencia", "Plasencia", "canciller Plasencia"], surname_only_safe: true, note: "Replaced Yván Gil (moved to Ciencia y Tecnología).", src: "https://www.abc.es/internacional/delcy-rodriguez-designa-representante-diplomatico-eeuu-nuevo-20260713000202-nt.html"}
+    other_key:
+      - {name: "Jorge Rodríguez Gómez", title: "Presidente de la Asamblea Nacional", since: "2026-01-05", aliases: ["Jorge Rodríguez"], surname_only_safe: false, status: VERIFIED, src: "https://www.asambleanacional.gob.ve/noticias/diputado-jorge-rodriguez-es-electo-presidente-del-parlamento-para-el-periodo-2026"}
+      - {name: "Diosdado Cabello", title: "Ministro de Relaciones Interiores, Justicia y Paz", since: "UNVERIFIED (reappointed 2024?)", since_verified: false, aliases: ["Diosdado Cabello", "Cabello"], surname_only_safe: true, status: VERIFIED, src: "https://www.pcivil.gob.ve/2026/09/ministro-cabello-sostiene-reunion-de-seguridad-para-consolidar-estrategias-de-paz/"}
+      - {name: "María Corina Machado", title: "Opposition leader (attempting return to Venezuela)", aliases: ["María Corina Machado", "Corina Machado"], weak_aliases: ["Machado"], surname_only_safe: false, status: PARTIAL, src: "https://elpais.com/america/2026-09-28/tras-los-intentos-frustrados-de-retorno-a-venezuela-de-maria-corina-machado-vuelve-su-jefa-de-comunicaciones.html"}
+    former:
+      - {name: "Nicolás Maduro Moros", title: "Ex-presidente; captured by US forces 2026-01-03; held at MDC Brooklyn, New York; wife Cilia Flores also detained", aliases: ["Nicolás Maduro", "Maduro", "Cilia Flores"], case_sensitive_aliases: ["Maduro"], surname_only_safe: true, status: VERIFIED, note: "Case-sensitive: 'maduro' = ripe/mature in es/pt.", src: "https://www.cibercuba.com/noticias/2026-09-25-u1-e43231-s27061-nid341172-delcy-nueva-york-visitar-maduro-prision"}
+      - {name: "Yván Gil", title: "Ex-canciller (2023 to Jul 2026), now Ciencia y Tecnología", aliases: ["Yván Gil", "Yvan Gil"], surname_only_safe: false, status: VERIFIED}
+
+# =============================================================================
+# 3. FOREIGN ENTITIES (non-LatAm). Each `id` is a group for the Tier-1 rule.
+#    Aliases are per language; "(weak)" is NOT part of the string - weakness is in weak_aliases.
+#    people[].status as in `leaders`.
+# =============================================================================
+foreign_entities:
+
+  countries:
+    - id: US
+      name: "Estados Unidos"
+      aliases:
+        es: ["Estados Unidos", "EEUU", "EE.UU.", "EE. UU.", "EE UU", "EU", "Casa Blanca", "Departamento de Estado", "Pentágono", "Departamento de Guerra", "Departamento de Justicia", "Congreso de EEUU", "estadounidense", "estadounidenses", "norteamericano", "norteamericana", "Washington"]
+        pt: ["Estados Unidos", "EUA", "Casa Branca", "norte-americano", "norte-americana", "Washington"]
+        en: ["United States", "U.S.", "US", "USA", "White House", "State Department", "Pentagon", "Washington"]
+        fr: ["États-Unis", "Etats-Unis", "Maison-Blanche", "Washington"]
+      lang_only_aliases: {"EU": [es], "EUA": [pt, es], "US": [en], "U.S.": [en]}
+      case_sensitive_aliases: ["EU", "EEUU", "EUA", "US", "USA", "U.S."]
+      weak_aliases: ["Washington", "norteamericano", "norteamericana", "norte-americano", "norte-americana"]
+      stoplist_phrases: ["Washington Post", "Washington Commanders", "Estado de Washington", "Washington State", "George Washington"]
+      notes: >
+        'americano/American' is deliberately NOT an alias (also 'of the Americas', e.g. Organización de Estados Americanos).
+        'estadounidense' is strong. "EU" is US only when the headline language is Spanish (Proceso/El Universal style);
+        in en/fr it is the European Union. NYT/Washington Post appear in out_of_entity_names (source attributions).
+      people:
+        - {name: "Donald J. Trump", title: "President of the United States", since: "2025-01-20", status: VERIFIED, aliases: ["Donald Trump", "Trump", "presidente Trump", "administración Trump", "trumpismo", "trumpista"], surname_only_safe: true, src: "https://www.diariolasamericas.com/eeuu/trump-se-reune-aliados-del-escudo-las-americas-y-les-ofrece-apoyo-el-combate-al-crimen-n5402595"}
+        - {name: "Marco Rubio", title: "Secretary of State", since: "2025-01-21", status: VERIFIED, aliases: ["Marco Rubio", "Rubio", "secretario de Estado Rubio"], case_sensitive_aliases: ["Rubio"], surname_only_safe: true, note: "'rubio' = blond (es/pt) => case-sensitive.", src: "https://www.state.gov/releases/office-of-the-spokesperson/2026/09/secretary-of-state-marco-rubio-and-ecuadorian-foreign-minister-roberto-kurydeliver-statements"}
+        - {name: "J. D. Vance", title: "Vice President (VERIFIED: attended the Escudo de las Américas meeting at the UN, Sept 2026, per Diario Las Américas)", since: "2025-01-20", status: VERIFIED, aliases: ["JD Vance", "J.D. Vance", "Vance", "vicepresidente Vance"], surname_only_safe: true, src: "https://www.diariolasamericas.com/eeuu/trump-se-reune-aliados-del-escudo-las-americas-y-les-ofrece-apoyo-el-combate-al-crimen-n5402595"}
+        - {name: "Christopher Landau", title: "Deputy Secretary of State", since: "2025-03-25", status: VERIFIED, aliases: ["Christopher Landau", "Landau"], surname_only_safe: true, src: "https://www.state.gov/biographies/christopher-landau"}
+        - {name: "Pete Hegseth", title: "Secretary of War/Defense (single aggregated source)", status: PARTIAL, aliases: ["Pete Hegseth", "Hegseth"], surname_only_safe: true, src: "https://spectrumnews1.com/ky/louisville/military/2026/09/30/hegseth-6-announcements"}
+        - {name: "Scott Bessent", title: "Treasury Secretary (single aggregated source)", status: PARTIAL, aliases: ["Scott Bessent", "Bessent"], surname_only_safe: true}
+        - {name: "Todd Blanche", title: "Attorney General per one 2026-09-30 search summary - SINGLE SOURCE, re-verify", status: UNVERIFIED, aliases: ["Todd Blanche"], surname_only_safe: false}
+        - {name: "Terrance (Terry) Cole", title: "DEA Administrator", status: VERIFIED, aliases: ["Terrance Cole", "Terry Cole", "administrador de la DEA"], surname_only_safe: false, src: "https://www.dea.gov/dea-leadership"}
+        - {name: "Gen. Francis L. Donovan, USMC", title: "SOUTHCOM Commander", status: VERIFIED, aliases: ["Francis Donovan", "general Donovan"], surname_only_safe: false, src: "https://ve.usembassy.gov/es/sesion-informativa-para-la-prensa-con-john-barrett-encargado-de-negocios-de-la-embajada-de-ee-uu-en-caracas-y-el-general-francis-donovan-comandan/"}
+        - {name: "John M. Barrett", title: "US Chargé d'Affaires in Caracas (since 2026-04)", since: "2026-04", status: VERIFIED, aliases: ["John Barrett"], implies_country: VE, surname_only_safe: false, note: "Headline 'John Barrett reveló que EE UU aportó…' implies Venezuela via the person.", src: "https://ve.usembassy.gov/es/encargado-de-negocios-john-m-barrett/"}
+        - {name: "Mauricio Claver-Carone", title: "Former envoy; unofficial Venezuela adviser until 2026-07 (left role)", status: PARTIAL, aliases: ["Claver-Carone"], surname_only_safe: true, src: "https://www.reuters.com/world/trumps-powerful-unofficial-venezuela-adviser-leaves-his-role-2026-07-31/"}
+        # UNVERIFIED (not searched): US ambassador to Mexico, USTR, National Security Adviser.
+
+    - id: CN
+      name: "China"
+      aliases: {es: ["China", "chino", "china", "chinos", "chinas", "Pekín", "Beijing"], pt: ["China", "chinês", "chinesa", "chineses", "Pequim"], en: ["China", "Chinese", "Beijing"], fr: ["Chine", "chinois", "chinoise", "Pékin"]}
+      case_sensitive_aliases: ["China"]
+      weak_aliases: ["chino", "china", "chinos", "chinas", "Pekín", "Beijing", "Pequim"]
+      stoplist_phrases: ["porcelana china", "tinta china", "muralla china", "pavo chino", "naranja china"]
+      notes: "Lowercase 'china' = orange (Caribbean) => only capital-C 'China' is strong. Adjectives are weak because of food/craft usage; 'firmas chinas' + LatAm + 'concesiones' still caught via the `Chin*` adjective when a LatAm country is present (weak alias + non-weak LatAm entity = OK)."
+      people:
+        - {name: "Xi Jinping", title: "President of China", status: VERIFIED, aliases: ["Xi Jinping", "Xi"], case_sensitive_aliases: ["Xi"], surname_only_safe: true, src: "https://infonews.ca/news/7614123/chinas-xi-warns-against-worlds-retrogression-to-the-law-of-the-jungle-in-meeting-with-spains-pm/"}
+        - {name: "Wang Yi", title: "Foreign Minister of China", status: VERIFIED, aliases: ["Wang Yi"], surname_only_safe: false, src: "https://www.mfa.gov.cn/mfa_eng/wjbzhd/202609/t20260919_12026460.html"}
+    - id: TW
+      name: "Taiwán"
+      aliases: {es: ["Taiwán", "Taiwan", "Taipéi"], pt: ["Taiwan", "Taipé"], en: ["Taiwan", "Taipei"], fr: ["Taïwan", "Taiwan"]}
+      notes: "Recognition (Paraguay, Guatemala, Haiti) is a recurring IR topic; Peña defended Taiwan at UNGA 2026."
+    - id: RU
+      name: "Rusia"
+      aliases: {es: ["Rusia", "ruso", "rusa", "rusos", "rusas", "Moscú", "Kremlin"], pt: ["Rússia", "russo", "russa", "Moscou", "Kremlin"], en: ["Russia", "Russian", "Moscow", "Kremlin"], fr: ["Russie", "russe", "russes", "Moscou", "Kremlin"]}
+      weak_aliases: ["ruso", "rusa", "rusos", "rusas", "Moscú", "Moscow", "Moscou"]
+      stoplist_phrases: ["ensaladilla rusa", "montaña rusa", "ruleta rusa", "muñeca rusa", "Russian roulette", "roulette russe", "montanha-russa"]
+      people:
+        - {name: "Vladimir Putin", title: "President of Russia", status: VERIFIED, aliases: ["Vladimir Putin", "Putin", "Poutine"], surname_only_safe: true, src: "http://en.kremlin.ru/events/president/news/80874"}
+        - {name: "Sergey Lavrov", title: "Foreign Minister of Russia", status: VERIFIED, aliases: ["Serguéi Lavrov", "Sergey Lavrov", "Lavrov"], surname_only_safe: true, src: "https://mid.ru/en/foreign_policy/news/2150800/"}
+    - id: EU
+      name: "Unión Europea"
+      aliases:
+        es: ["Unión Europea", "UE", "Comisión Europea", "Parlamento Europeo", "Consejo Europeo", "Acuerdo UE-Mercosur", "europeo", "europea", "europeos", "europeas", "Bruselas"]
+        pt: ["União Europeia", "UE", "Comissão Europeia", "Parlamento Europeu", "europeu", "europeia"]
+        en: ["European Union", "EU", "European Commission", "European Parliament", "European", "Brussels"]
+        fr: ["Union européenne", "UE", "Commission européenne", "Parlement européen", "européen", "européenne"]
+      lang_only_aliases: {"EU": [en], "UE": [es, pt, fr]}
+      case_sensitive_aliases: ["EU", "UE"]
+      weak_aliases: ["europeo", "europea", "europeos", "europeas", "europeu", "europeia", "European", "européen", "européenne", "Bruselas", "Brussels"]
+      stoplist_phrases: ["Copa Europea", "Liga Europea", "Europa League", "Champions League", "Eurocopa", "Eurovisión"]
+      people:
+        - {name: "Ursula von der Leyen", title: "President of the European Commission", status: VERIFIED, aliases: ["Ursula von der Leyen", "von der Leyen"], surname_only_safe: true, src: "https://www.euronews.com/my-europe/2026/09/09/kaja-kallas-under-fire-from-eu-capitals-when-she-needs-them-most"}
+        - {name: "Kaja Kallas", title: "EU High Representative for Foreign Affairs", status: VERIFIED, aliases: ["Kaja Kallas", "Kallas"], surname_only_safe: true, src: "https://www.euronews.com/my-europe/2026/09/09/kaja-kallas-under-fire-from-eu-capitals-when-she-needs-them-most"}
+        # UNVERIFIED (not searched): European Council president; EU trade commissioner.
+    - id: UK
+      name: "Reino Unido"
+      aliases:
+        es: ["Reino Unido", "Gran Bretaña", "Inglaterra", "británico", "británica", "británicos", "británicas", "Downing Street"]
+        pt: ["Reino Unido", "Grã-Bretanha", "britânico", "britânica", "britânicos"]
+        en: ["United Kingdom", "UK", "U.K.", "Britain", "British", "Downing Street", "Whitehall"]
+        fr: ["Royaume-Uni", "Grande-Bretagne", "britannique", "britanniques"]
+      case_sensitive_aliases: ["UK", "U.K."]
+      weak_aliases: ["Inglaterra"]
+      stoplist_phrases: ["Premier League", "Nueva Inglaterra", "New England", "Colombia Británica", "British Columbia", "Honduras Británica", "Golfo de Honduras"]
+      people:
+        - {name: "Andy Burnham", title: "Prime Minister of the UK (since 2026-07-20)", since: "2026-07-20", status: VERIFIED, aliases: ["Andy Burnham", "Burnham"], surname_only_safe: true, src: "https://www.gov.uk/government/ministers/prime-minister"}
+        # UNVERIFIED (not searched): UK Foreign Secretary.
+    - id: ES
+      name: "España"
+      aliases: {es: ["España", "español", "española", "españoles", "españolas", "Moncloa"], pt: ["Espanha", "espanhol", "espanhola", "espanhóis"], en: ["Spain", "Spanish"], fr: ["Espagne", "espagnol", "espagnole"]}
+      weak_aliases: ["español", "española", "españoles", "españolas", "Spanish", "espagnol", "espagnole", "espanhol", "espanhola", "Moncloa"]
+      notes: "'español/Spanish' also = the language (weak). Felipe VI attended Colombia's inauguration 2026-08-07."
+      people:
+        - {name: "Pedro Sánchez", title: "Prime Minister of Spain", status: VERIFIED, aliases: ["Pedro Sánchez"], surname_only_safe: false, src: "https://www.elysee.fr/en/emmanuel-macron/2026/09/30/state-visit-to-spain"}
+        - {name: "José Manuel Albares", title: "Minister of Foreign Affairs, EU and Cooperation", status: VERIFIED, aliases: ["José Manuel Albares", "Albares"], surname_only_safe: true, src: "https://www.goaragon.eu/news-aragon-spain-spain-china-strategic-dialogue-agreement/"}
+        - {name: "Felipe VI", title: "King of Spain", status: VERIFIED, aliases: ["Felipe VI", "rey Felipe"], surname_only_safe: false, src: "https://www.elpais.com.co/politica/abelardo-de-la-espriella-asumio-la-presidencia-de-colombia-en-cali-asi-fue-la-jornada-de-posesion-0728.html"}
+    - id: CA
+      name: "Canadá"
+      aliases: {es: ["Canadá", "canadiense", "canadienses"], pt: ["Canadá", "canadense", "canadenses"], en: ["Canada", "Canadian", "Canadians"], fr: ["Canada", "canadien", "canadienne", "canadiens"]}
+      people:
+        - {name: "Mark Carney", title: "Prime Minister of Canada", status: VERIFIED, aliases: ["Mark Carney", "Carney"], surname_only_safe: true, src: "https://www.bbc.co.uk/news/articles/cmx2zlqeje9zo"}
+    - id: DE
+      name: "Alemania"
+      aliases: {es: ["Alemania", "alemán", "alemana", "alemanes"], pt: ["Alemanha", "alemão", "alemã", "alemães"], en: ["Germany", "German", "Germans"], fr: ["Allemagne", "allemand", "allemande", "allemands"]}
+      people:
+        - {name: "Friedrich Merz", title: "Chancellor of Germany", status: VERIFIED, aliases: ["Friedrich Merz", "Merz"], surname_only_safe: true, src: "https://www.bbc.co.uk/news/articles/cmx2zlqeje9zo"}
+        - {name: "Johann Wadephul", title: "Foreign Minister of Germany (single source)", status: PARTIAL, aliases: ["Johann Wadephul", "Wadephul"], surname_only_safe: true}
+    - id: FR
+      name: "Francia"
+      aliases: {es: ["Francia", "francés", "francesa", "franceses", "Elíseo"], pt: ["França", "francês", "francesa", "franceses"], en: ["France", "French", "Élysée"], fr: ["France", "français", "française", "Élysée"]}
+      weak_aliases: ["French", "francés", "francesa", "franceses", "francês", "francesa"]
+      stoplist_phrases: ["Guayana Francesa", "French Guiana", "Guyane française", "Guiana Francesa", "Polinesia Francesa", "French Polynesia", "tortilla francesa", "French fries"]
+      people:
+        - {name: "Emmanuel Macron", title: "President of France", status: VERIFIED, aliases: ["Emmanuel Macron", "Macron"], surname_only_safe: true, src: "https://www.elysee.fr/en/emmanuel-macron/2026/09/30/state-visit-to-spain"}
+        - {name: "Sébastien Lecornu", title: "Prime Minister of France (single source)", status: PARTIAL, aliases: ["Sébastien Lecornu", "Lecornu"], surname_only_safe: true}
+        - {name: "Jean-Noël Barrot", title: "Foreign Minister of France (single source)", status: PARTIAL, aliases: ["Jean-Noël Barrot", "Barrot"], surname_only_safe: true}
+    - id: IT
+      name: "Italia"
+      aliases: {es: ["Italia", "italiano", "italiana", "italianos"], pt: ["Itália", "italiano", "italiana"], en: ["Italy", "Italian"], fr: ["Italie", "italien", "italienne"]}
+      weak_aliases: ["italiano", "italiana", "italianos", "Italian", "italien", "italienne"]
+      notes: "Leaders UNVERIFIED (not searched)."
+    - id: IN
+      name: "India"
+      aliases: {es: ["India", "Nueva Delhi"], pt: ["Índia", "Nova Délhi"], en: ["India", "New Delhi"], fr: ["Inde", "New Delhi"]}
+      stoplist_phrases: ["Indias Occidentales", "West Indies"]
+      notes: "Adjectives (indio/Indian) deliberately NOT aliases (Native American / indigenous usage)."
+      people:
+        - {name: "Narendra Modi", title: "Prime Minister of India", status: VERIFIED, aliases: ["Narendra Modi", "Modi"], surname_only_safe: true, src: "https://www.indiatoday.in/india/story/iran-president-masoud-pezeshkian-india-pm-modi-hold-hands-india-ties-2992985-2026-09-12"}
+    - id: IR
+      name: "Irán"
+      aliases: {es: ["Irán", "iraní", "iraníes", "Teherán"], pt: ["Irã", "iraniano", "iraniana", "iranianos", "Teerã"], en: ["Iran", "Iranian", "Iranians", "Tehran"], fr: ["Iran", "iranien", "iranienne", "iraniens", "Téhéran"]}
+      notes: "Nicaragua/Venezuela-Iran ties; the OAS Nicaragua draft targets Chinese, Russian and Iranian presence."
+      people:
+        - {name: "Masoud Pezeshkian", title: "President of Iran", status: VERIFIED, aliases: ["Masoud Pezeshkian", "Pezeshkian"], surname_only_safe: true, src: "https://www.indiatoday.in/india/story/iran-president-masoud-pezeshkian-india-pm-modi-hold-hands-india-ties-2992985-2026-09-12"}
+        - {name: "Mojtaba Khamenei", title: "Supreme Leader (succeeded Ali Khamenei Mar 2026; not seen in public, health rumours)", status: VERIFIED, aliases: ["Mojtaba Khamenei", "Jameneí", "Khamenei"], surname_only_safe: false, src: "https://political.org/2026/09/24/irans-president-masoud-pezeshkian-insists-supreme-leader-mojtaba-khamenei-is-completely-healthy-amid-death-rumors/"}
+        - {name: "Abbas Araghchi", title: "Foreign Minister of Iran (single source)", status: PARTIAL, aliases: ["Abbas Araghchi", "Araghchi"], surname_only_safe: true}
+    - id: IL
+      name: "Israel"
+      aliases: {es: ["Israel", "israelí", "israelíes"], pt: ["Israel", "israelense", "israelenses"], en: ["Israel", "Israeli", "Israelis"], fr: ["Israël", "israélien", "israélienne", "israéliens"]}
+      people:
+        - {name: "Benjamin Netanyahu", title: "Prime Minister of Israel", status: VERIFIED, aliases: ["Benjamin Netanyahu", "Benjamín Netanyahu", "Netanyahu"], surname_only_safe: true, src: "https://www.iranintl.com/en/202609241974"}
+    - id: PS
+      name: "Palestina / Gaza"
+      aliases: {es: ["Palestina", "palestino", "palestinos", "Gaza", "Cisjordania"], pt: ["Palestina", "palestino", "Gaza", "Cisjordânia"], en: ["Palestine", "Palestinian", "Gaza", "West Bank"], fr: ["Palestine", "palestinien", "Gaza", "Cisjordanie"]}
+    - id: UA
+      name: "Ucrania"
+      aliases: {es: ["Ucrania", "ucraniano", "ucraniana", "Kiev", "Kyiv"], pt: ["Ucrânia", "ucraniano", "ucraniana", "Kiev"], en: ["Ukraine", "Ukrainian", "Kyiv", "Kiev"], fr: ["Ukraine", "ukrainien", "ukrainienne", "Kiev"]}
+    - id: JP
+      name: "Japón"
+      aliases: {es: ["Japón", "japonés", "japonesa", "japoneses", "Tokio"], pt: ["Japão", "japonês", "japonesa", "Tóquio"], en: ["Japan", "Japanese", "Tokyo"], fr: ["Japon", "japonais", "japonaise", "Tokyo"]}
+      people:
+        - {name: "Sanae Takaichi", title: "Prime Minister of Japan (cabinet reshuffled 2026-09-17)", status: VERIFIED, aliases: ["Sanae Takaichi", "Takaichi"], surname_only_safe: true, src: "https://japan.kantei.go.jp/105/actions/202609/17takaichinaikaku2.html"}
+    - id: KR
+      name: "Corea del Sur"
+      aliases: {es: ["Corea del Sur", "surcoreano", "surcoreana", "Seúl"], pt: ["Coreia do Sul", "sul-coreano", "Seul"], en: ["South Korea", "South Korean", "Seoul"], fr: ["Corée du Sud", "sud-coréen", "Séoul"]}
+    - id: KP
+      name: "Corea del Norte"
+      aliases: {es: ["Corea del Norte", "norcoreano", "norcoreana", "Pionyang"], pt: ["Coreia do Norte", "norte-coreano"], en: ["North Korea", "North Korean", "Pyongyang"], fr: ["Corée du Nord", "nord-coréen"]}
+    - id: TR
+      name: "Turquía"
+      aliases: {es: ["Turquía", "turco", "turca", "turcos"], pt: ["Turquia", "turco", "turca"], en: ["Türkiye", "Turkish", "Turkey"], fr: ["Turquie", "turc", "turque"]}
+      weak_aliases: ["turco", "turca", "turcos", "Turkey", "Turkish", "turc", "turque"]
+      stoplist_phrases: ["Turkey Day", "cold turkey", "Thanksgiving turkey"]
+    - id: GULF
+      name: "Golfo: Arabia Saudita / EAU / Qatar / Ormuz"
+      aliases: {es: ["Arabia Saudita", "Arabia Saudí", "Emiratos Árabes Unidos", "Catar", "Qatar", "Ormuz"], pt: ["Arábia Saudita", "Emirados Árabes Unidos", "Catar", "Ormuz"], en: ["Saudi Arabia", "United Arab Emirates", "UAE", "Qatar", "Hormuz"], fr: ["Arabie saoudite", "Émirats arabes unis", "Qatar", "Ormuz"]}
+      case_sensitive_aliases: ["UAE"]
+      weak_aliases: ["Ormuz", "Hormuz"]
+      notes: "Hormuz closure is a live 2026 topic (Peña at UNGA). 'Ormuz' weak: often a global-energy story without a LatAm actor."
+    - id: AU
+      name: "Australia"
+      aliases: {es: ["Australia", "australiano", "australiana"], pt: ["Austrália", "australiano"], en: ["Australia", "Australian"], fr: ["Australie", "australien"]}
+    - id: GY
+      name: "Guyana"
+      aliases: {es: ["Guyana", "guyanés", "guyanesa"], pt: ["Guiana", "guianense"], en: ["Guyana", "Guyanese"], fr: ["Guyana"]}
+      stoplist_phrases: ["Guayana Francesa", "French Guiana", "Guiana Francesa"]
+      notes: "Not in the 20+PR list; treated as foreign. Essequibo dispute in `disputes`. Carolyn Rodrigues-Birkett (GY) is a UN SG candidate."
+    - id: CARIBBEAN_OTHER
+      name: "Belice / Surinam / Jamaica / Trinidad y Tobago / Bahamas / Barbados"
+      aliases: {es: ["Belice", "Surinam", "Jamaica", "Trinidad y Tobago", "Bahamas", "Barbados"], pt: ["Belize", "Suriname", "Jamaica", "Trinidad e Tobago", "Bahamas", "Barbados"], en: ["Belize", "Suriname", "Jamaica", "Trinidad and Tobago", "Bahamas", "Barbados"], fr: ["Belize", "Suriname", "Jamaïque"]}
+      weak_aliases: ["Jamaica"]
+      notes: "'Granada' deliberately not listed (Spanish city). 'Dominica' (separate country) is omitted on purpose to avoid the DR collision."
+    - id: VA
+      name: "Vaticano / Santa Sede"
+      aliases: {es: ["Vaticano", "Santa Sede", "León XIV"], pt: ["Vaticano", "Santa Sé", "Leão XIV"], en: ["Vatican", "Holy See", "Pope Leo", "Leo XIV"], fr: ["Vatican", "Saint-Siège", "Léon XIV"]}
+      notes: "Leo XIV visits Uruguay, Argentina and Peru 2026-11-06 to 2026-11-17 (Vatican press office, 2026-09-21). Bare 'papa/Papa' omitted ('papa' = potato in LatAm Spanish)."
+      people:
+        - {name: "León XIV", title: "Pope", status: VERIFIED, aliases: ["León XIV", "Leo XIV", "Leão XIV", "Léon XIV"], surname_only_safe: true, src: "https://press.vatican.va/content/salastampa/es/bollettino/pubblico/2026/09/21/210926d.html"}
+
+  institutions:
+    - {id: OAS, name: "Organización de los Estados Americanos", aliases: {es: ["OEA", "Organización de los Estados Americanos"], pt: ["OEA", "Organização dos Estados Americanos"], en: ["OAS", "Organization of American States"], fr: ["OEA", "Organisation des États américains"]}, case_sensitive_aliases: ["OAS", "OEA"], people: [{name: "Albert Ramdin", title: "OAS Secretary General (since 2025-05-26; term to 2030)", status: VERIFIED, aliases: ["Albert Ramdin", "Ramdin"], surname_only_safe: true, src: "http://www.oas.org/en/about/secretary_general.asp"}], notes: "2026-10-02: OAS to consider a draft resolution naming Nicaragua a hemispheric threat (backed by US, Colombia, Peru)."}
+    - {id: UN, name: "Naciones Unidas", aliases: {es: ["ONU", "Naciones Unidas", "Asamblea General de la ONU"], pt: ["ONU", "Nações Unidas", "Assembleia Geral da ONU"], en: ["United Nations", "UN", "UNGA", "UN General Assembly", "UN Security Council"], fr: ["ONU", "Nations unies", "Conseil de sécurité de l'ONU"]}, case_sensitive_aliases: ["UN", "UNGA"], lang_only_aliases: {"UN": [en], "ONU": [es, pt, fr]}, people: [{name: "António Guterres", title: "UN Secretary-General until 2026-12-31", status: VERIFIED, aliases: ["António Guterres", "Antonio Guterres", "Guterres"], surname_only_safe: true, src: "https://elpais.com/internacional/2026-09-29/rebeca-grynspan-se-distancia-del-resto-candidatos-en-la-carrera-por-la-jefatura-de-la-onu-en-la-cuarta-votacion-informal.html"}], notes: "SG succession (4th straw poll 2026-09-29): Rebeca Grynspan (CR) leads, Rafael Grossi (AR) trails, Carolyn Rodrigues-Birkett (GY); Bachelet (CL) withdrew 2026-09-20. 'UN' case-sensitive, English only ('un' = a/one in es/fr). Bare 'Consejo de Seguridad' omitted (also national security councils)."}
+    - {id: IMF, name: "Fondo Monetario Internacional", aliases: {es: ["FMI", "Fondo Monetario Internacional"], pt: ["FMI", "Fundo Monetário Internacional"], en: ["IMF", "International Monetary Fund"], fr: ["FMI", "Fonds monétaire international"]}, case_sensitive_aliases: ["IMF", "FMI"], people: [{name: "Kristalina Georgieva", title: "IMF Managing Director", status: VERIFIED, aliases: ["Kristalina Georgieva", "Georgieva"], surname_only_safe: true, src: "https://www.imf.org/es/about/senior-officials/bios/kristalina-georgieva"}]}
+    - {id: WB, name: "Banco Mundial", aliases: {es: ["Banco Mundial"], pt: ["Banco Mundial"], en: ["World Bank"], fr: ["Banque mondiale"]}, people: [{name: "Ajay Banga", title: "World Bank Group President", status: VERIFIED, aliases: ["Ajay Banga", "Banga"], surname_only_safe: true, src: "https://www.bancomundial.org/ext/es/who-we-are/leadership/ajay-banga"}]}
+    - {id: IDB, name: "Banco Interamericano de Desarrollo", aliases: {es: ["BID", "Banco Interamericano de Desarrollo"], pt: ["BID", "Banco Interamericano de Desenvolvimento"], en: ["IDB", "Inter-American Development Bank"], fr: ["BID", "Banque interaméricaine de développement"]}, case_sensitive_aliases: ["BID", "IDB"], people: [{name: "Ilan Goldfajn", title: "IDB President", status: VERIFIED, aliases: ["Ilan Goldfajn", "Goldfajn"], surname_only_safe: true, src: "https://www.lanacion.com.ar/economia/tras-el-respaldo-del-banco-mundial-luis-caputo-sumo-una-garantia-del-bid-por-us550-millones-para-nid17042026/"}], notes: "'BID' case-sensitive (English 'bid')."}
+    - {id: CAF, name: "CAF - Banco de Desarrollo de América Latina y el Caribe", aliases: {es: ["CAF", "Banco de Desarrollo de América Latina"], en: ["CAF Development Bank"]}, case_sensitive_aliases: ["CAF"], weak_aliases: ["CAF"]}
+    - {id: ICC, name: "Corte Penal Internacional", aliases: {es: ["CPI", "Corte Penal Internacional"], pt: ["TPI", "Tribunal Penal Internacional"], en: ["ICC", "International Criminal Court"], fr: ["CPI", "Cour pénale internationale"]}, case_sensitive_aliases: ["CPI", "ICC", "TPI"], weak_aliases: ["CPI"], notes: "'CPI' also = consumer price index and Brazil's CPI (Comissão Parlamentar de Inquérito, domestic): weak unless 'Corte Penal Internacional' is spelled out. Venezuela announced exit from the CPI (MPPRE headline)."}
+    - {id: ICJ, name: "Corte Internacional de Justicia", aliases: {es: ["CIJ", "Corte Internacional de Justicia"], pt: ["CIJ", "Corte Internacional de Justiça"], en: ["ICJ", "International Court of Justice"], fr: ["CIJ", "Cour internationale de justice"]}, case_sensitive_aliases: ["CIJ", "ICJ"]}
+    - {id: IACHR, name: "CIDH / Corte IDH", aliases: {es: ["CIDH", "Corte IDH", "Corte Interamericana de Derechos Humanos", "Comisión Interamericana de Derechos Humanos"], pt: ["CIDH", "Corte IDH"], en: ["IACHR", "Inter-American Commission on Human Rights"], fr: ["CIDH"]}, case_sensitive_aliases: ["CIDH", "IACHR"]}
+    - {id: BRICS, name: "BRICS", aliases: {es: ["BRICS"], pt: ["BRICS"], en: ["BRICS"], fr: ["BRICS"]}, case_sensitive_aliases: ["BRICS"]}
+    - {id: SICA, name: "SICA", aliases: {es: ["SICA", "Sistema de la Integración Centroamericana"]}, case_sensitive_aliases: ["SICA"]}
+    - {id: CARICOM, name: "CARICOM", aliases: {es: ["CARICOM", "Caricom", "Comunidad del Caribe"], en: ["CARICOM", "Caribbean Community"], fr: ["CARICOM"]}}
+    - {id: SHIELD, group: US, name: "Escudo de las Américas / Shield of the Americas", aliases: {es: ["Escudo de las Américas"], pt: ["Escudo das Américas"], en: ["Shield of the Americas"], fr: ["Bouclier des Amériques"]}, notes: "US-led hemispheric security initiative (2026). Chile (Kast) and Peru joined; Costa Rica's canciller was fired 2026-09-24 over a related Trump meeting. Resolves to group US."}
+    - {id: SUMMITS, name: "Cumbres hemisféricas", aliases: {es: ["Cumbre de las Américas", "Cumbre Iberoamericana", "Cumbre Celac-UE"], pt: ["Cúpula das Américas", "Cúpula do BRICS"], en: ["Summit of the Americas", "Ibero-American Summit"], fr: ["Sommet des Amériques"]}}
+    - {id: G20_G7, name: "G20 / G7", aliases: {es: ["G20", "G7"], pt: ["G20", "G7"], en: ["G20", "G7"], fr: ["G20", "G7"]}, case_sensitive_aliases: ["G20", "G7"]}
+    - {id: WTO, name: "OMC", aliases: {es: ["OMC", "Organización Mundial del Comercio"], pt: ["OMC", "Organização Mundial do Comércio"], en: ["WTO", "World Trade Organization"], fr: ["OMC", "Organisation mondiale du commerce"]}, case_sensitive_aliases: ["OMC", "WTO"]}
+    - {id: NATO, name: "OTAN", aliases: {es: ["OTAN"], pt: ["OTAN"], en: ["NATO"], fr: ["OTAN"]}, case_sensitive_aliases: ["OTAN", "NATO"]}
+    - {id: USMCA, name: "T-MEC / USMCA", aliases: {es: ["T-MEC", "TMEC", "TLCAN"], pt: ["T-MEC", "USMCA"], en: ["USMCA", "CUSMA", "NAFTA"], fr: ["ACEUM", "ALENA"]}, case_sensitive_aliases: ["T-MEC", "TMEC", "USMCA", "TLCAN"], implies: [MX, US, CA], notes: "Implies MX+US+CA (joint review; 4th round postponed to October 2026)."}
+    - {id: UN_AGENCIES, name: "Agencias ONU (ACNUR, OIM, CEPAL, PNUD, PMA, OPS/OMS)", aliases: {es: ["ACNUR", "OIM", "CEPAL", "PNUD", "PMA", "UNICEF", "OPS", "OMS"], pt: ["ACNUR", "OIM", "CEPAL", "PNUD", "OMS"], en: ["UNHCR", "IOM", "ECLAC", "UNDP", "UNICEF", "PAHO"], fr: ["HCR", "OIM", "OMS", "CEPALC"]}, case_sensitive_aliases: ["ACNUR", "OIM", "CEPAL", "PNUD", "PMA", "OPS", "OMS", "UNHCR", "IOM", "ECLAC", "UNDP", "PAHO"], weak_aliases: ["OPS", "PMA", "IOM"], notes: "'WHO' intentionally omitted (English pronoun)."}
+    - {id: SOUTHCOM, group: US, name: "Comando Sur de EEUU", aliases: {es: ["SOUTHCOM", "Comando Sur de EEUU", "Comando Sur de Estados Unidos"], pt: ["SOUTHCOM", "Comando Sul dos EUA"], en: ["SOUTHCOM", "Southern Command", "U.S. Southern Command"], fr: ["SOUTHCOM"]}, case_sensitive_aliases: ["SOUTHCOM"], notes: "Bare 'Comando Sur' omitted (Argentine army/police commands). Diálogo Américas is SOUTHCOM-affiliated."}
+    - {id: DEA, group: US, name: "DEA", aliases: {es: ["DEA", "Administración para el Control de Drogas"], pt: ["DEA"], en: ["DEA", "Drug Enforcement Administration"], fr: ["DEA"]}, case_sensitive_aliases: ["DEA"]}
+    - {id: USAID, group: US, name: "USAID", aliases: {es: ["USAID"], pt: ["USAID"], en: ["USAID"], fr: ["USAID"]}, case_sensitive_aliases: ["USAID"], notes: "Dismantled/absorbed into State in 2025 (from memory, not re-verified); legacy mentions remain in aid-cut stories."}
+    - {id: US_AGENCIES, group: US, name: "Agencias federales de EEUU", aliases: {es: ["CIA", "FBI", "ICE", "OFAC", "SDNY", "Patrulla Fronteriza", "Departamento del Tesoro", "Corte Suprema de EEUU", "Guardia Costera de EEUU"], pt: ["CIA", "FBI", "ICE", "OFAC"], en: ["CIA", "FBI", "ICE", "OFAC", "Border Patrol", "Treasury Department", "Homeland Security", "DHS"], fr: ["CIA", "FBI", "ICE", "OFAC"]}, case_sensitive_aliases: ["CIA", "FBI", "ICE", "OFAC", "SDNY", "DHS"], weak_aliases: ["Patrulla Fronteriza", "Border Patrol"], notes: "'ICE'/'CIA' case-sensitive (English 'ice', Portuguese 'cia')."}
+    - {id: INTERPOL, name: "Interpol / Europol", aliases: {es: ["Interpol", "Europol"], en: ["Interpol", "Europol"]}}
+    - {id: IAEA, name: "OIEA", aliases: {es: ["OIEA", "Organismo Internacional de Energía Atómica"], en: ["IAEA"]}, case_sensitive_aliases: ["OIEA", "IAEA"]}
+
+# =============================================================================
+# 2b. LATIN AMERICAN BLOCS (added 2026-09-30) – regional organisations that are LATIN AMERICAN entities, not foreign ones.
+# Same schema as foreign_entities.institutions (aliases by language, case_sensitive_aliases, weak_aliases, lang_only_aliases, notes).
+# Each bloc's `group` (default = id) is added to the LatAm group set (check_entities.py: s.latam), so a bloc + a foreign country/leader/
+# institution (EU, US, China, Russia, Trump...) is Tier 1 even with no country named ("Mercosur rechaza aranceles de Trump"), two different
+# blocs (or a bloc + a country/leader) are Tier 1 under the "two LatAm groups" rule, and a bloc alone + a strong ir_term is Tier 2.
+# A bloc alone with no strong ir_term is dropped.  Mercosur/Mercosul are ONE group (no double count).  Strong IR-institution wording for the
+# sports rule stays in sports_rule.override_ir (mercosur, mercosul, celac, comunidad andina, andean community, alba-tcp, alianza del pacifico).
+# =============================================================================
+latam_blocs:
+  - {id: CELAC, name: "CELAC", aliases: {es: ["CELAC", "Comunidad de Estados Latinoamericanos y Caribeños"], pt: ["CELAC"], en: ["CELAC"], fr: ["CELAC"]}, case_sensitive_aliases: ["CELAC"]}
+  - {id: MERCOSUR, name: "Mercosur", aliases: {es: ["Mercosur", "Mercado Común del Sur"], pt: ["Mercosul", "Mercosur"], en: ["Mercosur"], fr: ["Mercosur"]}, notes: "EU-Mercosur agreement and quota disputes (Paraguay/Uruguay, Sept 2026) are live."}
+  - {id: CAN, name: "Comunidad Andina", aliases: {es: ["Comunidad Andina", "CAN"], pt: ["Comunidade Andina"], en: ["Andean Community"], fr: ["Communauté andine"]}, case_sensitive_aliases: ["CAN"], weak_aliases: ["CAN"], lang_only_aliases: {"CAN": [es]}, notes: "'CAN' Spanish-only, case-sensitive and weak (English modal 'can', ALL-CAPS headlines). Prefer 'Comunidad Andina'."}
+  - {id: PACIFIC_ALLIANCE, name: "Alianza del Pacífico", aliases: {es: ["Alianza del Pacífico"], pt: ["Aliança do Pacífico"], en: ["Pacific Alliance"], fr: ["Alliance du Pacifique"]}}
+  - {id: ALBA, name: "ALBA-TCP", aliases: {es: ["ALBA-TCP", "Alianza Bolivariana", "ALBA"], en: ["ALBA"]}, case_sensitive_aliases: ["ALBA", "ALBA-TCP"], weak_aliases: ["ALBA"]}
+
+# Names that look like entities but are SOURCE/publisher attributions; masked before matching.
+out_of_entity_names:
+  - "The New York Times"
+  - "New York Times"
+  - "NYT"
+  - "Washington Post"
+  - "Wall Street Journal"
+  - "WSJ"
+  - "Reuters"
+  - "Associated Press"
+  - "AFP"
+  - "EFE"
+  - "Bloomberg"
+  - "BBC"
+  - "CNN"
+  - "DW"
+  - "Financial Times"
+  - "The Economist"
+  - "Le Monde"
+  - "El País"
+  - "teleSUR"
+  - "Americas Quarterly"
+  - "Diálogo Américas"
+  - "Infobae"
+
+# =============================================================================
+# 4. IR TERMS (Tier 2).  Tier 2 = exactly one LatAm group + >=1 `strong` term
+#    (or >=2 distinct `weak` terms when the LatAm entity is a country NAME, not a metonym/person).
+#    Matching is on accent-folded text. "*" = prefix wildcard ("sancion*" -> sanción/sanciones/sancionar).
+#    Multi-word entries are phrase matches; "|" inside parentheses is alternation (regex-lite).
+#    Strong terms are chosen so that their domestic false-positive rate is low; anything ambiguous lives in `weak`.
+# =============================================================================
+ir_terms:
+
+  es:
+    strong:
+      # NOTE: bare "sancion*" REMOVED (2026-09-30): es/pt "sanciona/sancionó/sancionou" usually = a leader signs a law.
+      # Sanctions are matched only as noun / explicit forms. "X sanciona a <Y>" (verb + object) is NOT an ir_term;
+      # it only counts when a foreign entity is also present, which already yields Tier 1 via the entity rule.
+      - "sanciones"
+      - "sancion (economica|financiera|comercial|diplomatica|internacional|contra|a)"
+      - "sanciones? (economica|financiera|comercial|diplomatica|internacional)s?"
+      - "sancionan a"
+      - "sancionar a"
+      - "sancionaran a"
+      - "arancel*"
+      - "tarifazo"
+      - "embajad*"                  # embajada / embajador(a)
+      - "consulado*"
+      - "consular*"
+      - "llamar a consultas"        # also llama/llamó/llamado a consultas
+      - "llam* a consultas"
+      - "relaciones diplomaticas"
+      - "relaciones consulares"
+      - "relaciones bilaterales"
+      - "relacion bilateral"
+      - "romper* relaciones"
+      - "rompe relaciones"
+      - "ruptura de relaciones"
+      - "restablec* relaciones"
+      - "reanuda* relaciones"
+      - "tratado de"
+      - "tratados"
+      - "extradicion"
+      - "extradit*"
+      - "deportacion*"
+      - "deportad*"
+      - "deportar"
+      - "cumbre"
+      - "expulsion"
+      - "expulsa*"
+      - "expulsad*"
+      - "cancilleria"
+      - "canciller"
+      - "cancilleres"
+      - "diplomatic*"
+      - "diplomacia"
+      - "acuerdo comercial"
+      - "acuerdo de libre comercio"
+      - "libre comercio"
+      - "socio comercial"
+      - "socios comerciales"
+      - "embargo"
+      - "soberania"
+      - "injerencia"
+      - "intervencion militar"
+      - "intervencion extranjera"
+      - "salida de la (oea|onu|cpi|celac)"
+      - "retiro de la (oea|onu|cpi)"
+      - "asilo diplomatico"
+      - "politica exterior"
+      - "relaciones exteriores"
+      - "cooperacion internacional"
+      - "ayuda humanitaria"
+      - "visita oficial"
+      - "visita de estado"
+      - "reunion bilateral"
+      - "memorando de entendimiento"
+      - "convenio marco"
+      - "acuerdo de seguridad"
+      - "tercer pais seguro"
+      - "organismos multilaterales"
+      - "multilateral*"
+      - "arbitraje internacional"
+      - "tribunal internacional"
+      - "bloqueo economico"
+      - "bloqueo comercial"
+      - "bloqueo naval"
+      - "cuarentena naval"
+      - "cancela* visas"             # cancela/cancelan/cancelar visas
+      - "revoca* visas"
+      - "retira* visas"
+      - "visas a"                   # "visas a funcionarios ..."
+      - "revocacion de visa*"
+      - "lista ofac"
+      - "organizacion terrorista"
+      - "narcoterroris*"
+      - "autoridades internacionales"
+      - "mandatarios extranjeros"
+      - "delegaciones internacionales"
+    weak:                           # never enough alone
+      - "visa"                      # payment brand, travel visa: weak alone
+      - "frontera*"                 # border - crime/abuse stories are domestic
+      - "fronteriz*"
+      - "bloqueo"                   # "bloqueo de medios" is domestic
+      - "acuerdo*"
+      - "visita*"
+      - "gira"
+      - "migrante*"
+      - "migracion"
+      - "migratori*"
+      - "caravana*"
+      - "inversion extranjera"
+      - "inversionistas"
+      - "exportacion*"
+      - "importacion*"
+      - "comercio"
+      - "petroleo"
+      - "minerales criticos"
+      - "tierras raras"
+      - "deuda externa"
+      - "riesgo pais"
+      - "negociacion*"
+      - "dialogo*"
+      - "mediacion"
+      - "espionaje"
+      - "narcotrafico"
+      - "extranjer*"
+      - "pasaporte*"
+      - "remesas"
+      - "reconoce*"
+      - "delegacion*"
+      - "asilo"
+
+  pt:
+    strong:
+      - "sancoes"                   # sanções
+      - "sancao (economica|financeira|comercial|diplomatica|contra)"   # bare sanção/sancionar = law signing in pt; see law_signing_stoplist
+      - "sancionam"
+      - "sancionar"
+      - "tarifaco"
+      - "tarifas"
+      - "embaixad*"
+      - "consulado*"
+      - "consular*"
+      - "chamar* para consultas"
+      - "chama* para consultas"
+      - "relacoes diplomaticas"
+      - "relacoes bilaterais"
+      - "rompimento de relacoes"
+      - "romper relacoes"
+      - "tratado*"
+      - "extradicao"
+      - "extradit*"
+      - "deportacao"
+      - "deportad*"
+      - "cupula"
+      - "expulsao"
+      - "expulsa*"
+      - "itamaraty"
+      - "chanceler"
+      - "chanceleres"
+      - "diplomatic*"
+      - "diplomacia"
+      - "acordo comercial"
+      - "livre comercio"
+      - "parceiro comercial"
+      - "parceiros comerciais"
+      - "embargo"
+      - "soberania"
+      - "ingerencia"
+      - "intervencao militar"
+      - "intervencao estrangeira"
+      - "politica externa"
+      - "relacoes exteriores"
+      - "cooperacao internacional"
+      - "ajuda humanitaria"
+      - "visita oficial"
+      - "reuniao bilateral"
+      - "memorando de entendimento"
+      - "multilateral*"
+      - "arbitragem"
+      - "tribunal internacional"
+      - "cancela* vistos"
+      - "revoga* vistos"
+      - "retira* vistos"
+    weak:
+      - "visto*"
+      - "fronteira*"
+      - "bloqueio"
+      - "acordo*"
+      - "visita*"
+      - "migrante*"
+      - "migracao"
+      - "caravana*"
+      - "exportacao*"
+      - "importacao*"
+      - "comercio"
+      - "petroleo"
+      - "dialogo*"
+      - "negociacao*"
+      - "estrangeir*"
+      - "remessas"
+      - "asilo"
+
+  en:
+    strong:
+      - "sanction*"
+      - "tariff*"
+      - "ambassador*"
+      - "embassy"
+      - "consulate*"
+      - "consular"
+      - "recall* (its |his |her )?ambassador"
+      - "summon* (the )?ambassador"
+      - "diplomatic*"
+      - "diplomat"
+      - "diplomats"
+      - "treaty"
+      - "treaties"
+      - "extradit*"
+      - "deport(s|ed|ing|ation|ations|ee|ees)?"
+      - "summit"
+      - "expel*"
+      - "expulsion"
+      - "foreign ministry"
+      - "foreign minister"
+      - "foreign policy"
+      - "trade deal"
+      - "trade agreement"
+      - "trade partner*"
+      - "free trade"
+      - "embargo"
+      - "sovereignty"
+      - "foreign interference"
+      - "interference in"
+      - "military intervention"
+      - "bilateral*"
+      - "multilateral*"
+      - "memorandum of understanding"
+      - "(cut|cuts|cutting|break|breaks|breaking|sever*) (off )?(diplomatic )?(ties|relations)"
+      - "(restore|restores|restoring|resume|resumes) (diplomatic )?(ties|relations)"
+      - "arbitration"
+      - "international court"
+      - "humanitarian aid"
+      - "foreign aid"
+      - "official visit"
+      - "state visit"
+      - "security pact"
+      - "security agreement"
+      - "terror(ist)? (organization|designation)"
+      - "naval blockade"
+      - "(cancel|cancels|cancelled|canceled|revoke|revokes|revoked) visas?"
+      - "visa (ban|restrictions?|revocations?|cancell?ations?)"
+    weak:
+      - "visa"
+      - "border"
+      - "blockade"
+      - "deal"
+      - "talks"
+      - "negotiat*"
+      - "dialogue"
+      - "visit*"
+      - "migrant*"
+      - "immigra*"
+      - "caravan*"
+      - "trade"
+      - "export*"
+      - "import*"
+      - "oil"
+      - "critical minerals"
+      - "rare earth*"
+      - "foreign"
+      - "remittance*"
+      - "asylum"
+      - "recogni*"
+
+  fr:
+    strong:
+      - "sanction*"
+      - "sancions"                  # Catalan/Occitan spelling seen in es/ca outlets
+      - "droits de douane"
+      - "tarifs douaniers"
+      - "ambassad*"
+      - "consulat*"
+      - "consulaire*"
+      - "rappel* (de )?(son |l')?ambassadeur"
+      - "relations diplomatiques"
+      - "relations bilaterales"
+      - "rupture des relations"
+      - "traite de"
+      - "traites"
+      - "extradition"
+      - "extrad*"
+      - "expulsion*"
+      - "expuls*"
+      - "deportation*"
+      - "sommet"
+      - "diplomat*"
+      - "ministre des affaires etrangeres"
+      - "politique etrangere"
+      - "accord commercial"
+      - "libre-echange"
+      - "partenaire commercial"
+      - "embargo"
+      - "souverainete"
+      - "ingerence"
+      - "intervention militaire"
+      - "bilateral*"
+      - "multilateral*"
+      - "memorandum d'entente"
+      - "arbitrage"
+      - "aide humanitaire"
+      - "visite officielle"
+    weak:
+      - "visa*"
+      - "frontiere*"
+      - "blocus"
+      - "accord*"
+      - "visite*"
+      - "migrant*"
+      - "commerce"
+      - "petrole"
+      - "dialogue"
+      - "negociation*"
+      - "etranger*"
+      - "asile"
+
+# =============================================================================
+# 5. EXPLICIT TIER RULES (implementation spec)
+# =============================================================================
+tier_rules:
+  group_resolution: >
+    Each matched alias resolves to (group, kind). Group = LatAm country code (20 + PR) or a `latam_blocs` id, 'LATAM' (regional term),
+    or a foreign group id (US, CN, EU, UK, ... or an institution id). A leader/metonym/demonym resolves to its
+    country's group. Institutions with `group: US` (SOUTHCOM, DEA, USAID, US_AGENCIES, SHIELD) resolve to US.
+    `implies_country` (e.g. John Barrett -> VE), `disputes.implies` and `USMCA.implies` add extra groups.
+  tier_1: "at least one LatAm country group AND at least one OTHER group (foreign country/leader/institution, or a second LatAm country). LATAM counts as a LatAm group only together with a foreign group. `latam_blocs` (Mercosur, CELAC, CAN, Pacific Alliance, ALBA) are LatAm groups."
+  tier_2: "exactly one LatAm country group and no other group, plus >=1 strong ir_term (or >=2 distinct weak terms when the LatAm match is a country NAME)."
+  drop: "everything else (single LatAm group with no strong IR term; foreign-only headlines; no entities)."
+  weak_entities: "A weak alias only counts if at least one non-weak entity of a DIFFERENT group is also present."
+  dedupe: "Country + its own leader + its own demonym = ONE group (e.g. 'Kast ... Chile' is not Tier 1)."
+  puerto_rico: "PR+US only reaches Tier 1/2 with a strong ir_term; otherwise drop (federal/domestic)."
+  publisher_names: "Masked via out_of_entity_names before matching; the `publisher` field is never matched."
+  second_latam_country: "A second LatAm group makes Tier 1 even if it appears as a demonym ('Venezolanos ... Colombia')."

@@ -7,7 +7,7 @@ import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from .briefing import publisher_summary, write_outputs
+from .briefing import write_outputs
 from .collector import collect, CollectionError
 from .config import Settings
 from .emailer import send_report
@@ -46,7 +46,7 @@ def scheduled_window(now: datetime, state_path: Path) -> CoverageWindow:
 
 
 def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description="Collect Latin American political headlines from major newspapers.")
+    result = argparse.ArgumentParser(description="Collect Latin American international-relations headlines.")
     result.add_argument("--lookback-hours", type=int, help="Override the automatic Monday=72h, other days=24h window")
     result.add_argument("--no-email", action="store_true", help="Generate files without sending email")
     result.add_argument("--scheduled", action="store_true", help="Anchor to 11:00 UTC and recover missed runs")
@@ -70,12 +70,10 @@ def main(argv: list[str] | None = None) -> int:
         (settings.output_dir / "failure.json").write_text(json.dumps({"status": "failed", "error": str(exc), "start": window.start.isoformat(), "end": window.end.isoformat()}), encoding="utf-8")
         logging.error("No briefing sent: %s", exc)
         return 1
-    paths = write_outputs(headlines, window, settings.output_dir)
-    logging.info("Wrote %d headlines to %s, %s and %s", len(headlines), *paths)
-    if headlines:
-        logging.info("Largest publisher counts: %s", publisher_summary(headlines))
+    path = write_outputs(headlines, window, settings.output_dir)
+    logging.info("Wrote %d headlines to %s", len(headlines), path)
     if not args.no_email:
-        sent = send_report(headlines, window, paths[0], paths[1], settings)
+        sent = send_report(headlines, window, path, settings)
         logging.info("Email %s", "sent" if sent else "skipped (SMTP settings not configured)")
     if args.scheduled:
         args.state_file.parent.mkdir(parents=True, exist_ok=True)

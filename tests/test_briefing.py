@@ -1,67 +1,81 @@
-import json
 from datetime import datetime, timedelta, timezone
 
-from latin_america_monitor.briefing import build_markdown, write_outputs
+from latin_america_monitor.briefing import build_html, build_markdown, write_outputs
 from latin_america_monitor.models import Headline
 from latin_america_monitor.window import CoverageWindow
 
 
-def test_briefing_contains_headline_publisher_and_original_link():
-    end = datetime(2026, 9, 28, 11, tzinfo=timezone.utc)
-    window = CoverageWindow(end - timedelta(hours=72), end, 72, "weekend roundup")
-    item = Headline(
-        title="Congress approves electoral reform",
-        publisher="Example Daily",
-        url="https://example.com/original-story",
-        seen_at=end - timedelta(hours=1),
-        market="Mexico",
-        scope="latin_america",
-        domain="example.com",
-    )
-    report = build_markdown([item], window, end)
-    assert "Congress approves electoral reform" in report
-    assert "Example Daily" in report
-    assert "https://example.com/original-story" in report
-    assert "weekend roundup" in report
-    assert "First indexed (UTC)" in report
+def _item(title, publisher, url, market="Mexico", scope="latin_america", domain="example.com", hours_ago=1, end=None):
+    end = end or datetime(2026, 9, 29, 11, tzinfo=timezone.utc)
+    return Headline(title, publisher, url, end - timedelta(hours=hours_ago), market, scope, domain)
 
 
-def test_briefing_lists_every_item_including_cross_publisher_duplicates():
+def test_briefing_is_publisher_headline_and_link_by_region():
     end = datetime(2026, 9, 29, 11, tzinfo=timezone.utc)
-    window = CoverageWindow(end - timedelta(hours=24), end, 24, "last 24 hours")
-    shared = "Senate confirms the ambassador"
+    mexico = _item("Mexico y China firman un tratado", "Proceso", "https://proceso.com.mx/story", end=end)
+    argentina_tier2 = _item("Argentina convoca a su embajador", "La Nación", "https://lanacion.com.ar/fmi", market="Argentina", domain="lanacion.com.ar", hours_ago=1, end=end)
+    argentina_tier1 = _item("Milei y Trump acuerdan un tratado", "DW", "https://dw.com/milei", market="International", scope="international", domain="dw.com", hours_ago=5, end=end)
+    domestic = _item("Keiko Fujimori aprueba alza del salario minimo", "El Comercio", "https://elcomercio.pe/salario", market="Peru", domain="elcomercio.pe", end=end)
+    report = build_markdown([argentina_tier2, domestic, argentina_tier1, mexico])
+    assert report.index("NORTEAMÉRICA") < report.index("SUDAMÉRICA")
+    assert "MÉXICO" in report and "ARGENTINA" in report
+    assert "Proceso: Mexico y China firman un tratado" in report
+    assert "https://proceso.com.mx/story" in report
+    assert "DW: Milei y Trump acuerdan un tratado" in report
+    assert report.index("Milei y Trump") < report.index("Argentina convoca a su embajador")
+    assert "salario" not in report
+    assert "Results:" not in report
+    assert "First indexed" not in report
+    assert "headlines from" not in report
+    assert "(1)" not in report
+    assert "weekend roundup" not in report
+    html = build_html([mexico, argentina_tier1])
+    assert "Proceso" in html and "https://proceso.com.mx/story" in html
+    assert "Results" not in html
+
+
+def test_briefing_keeps_cross_publisher_duplicates_and_raw_links():
+    end = datetime(2026, 9, 29, 11, tzinfo=timezone.utc)
+    shared = "Mexico and Brazil sign a treaty"
     items = [
-        Headline(shared, "Clarín", "https://clarin.com/a?id=1", end - timedelta(hours=2), "Argentina", "latin_america", "clarin.com"),
-        Headline(shared, "Reuters", "https://reuters.com/b?id=9", end - timedelta(hours=2), "International", "international", "reuters.com"),
-        Headline("Reform [live]", "El País", "https://elpais.com/c_(draft)", end - timedelta(hours=3), "Spain", "international", "elpais.com"),
+        _item(shared, "Clarín", "https://clarin.com/a?id=1", market="Argentina", domain="clarin.com", end=end),
+        _item(shared, "Reuters", "https://reuters.com/b?id=9", market="International", scope="international", domain="reuters.com", end=end),
+        _item("Chile and China sign a treaty [live]", "El País", "https://elpais.com/c_(draft)", market="Spain", scope="international", domain="elpais.com", hours_ago=3, end=end),
     ]
-    report = build_markdown(items, window, end)
+    report = build_markdown(items)
     assert report.count(shared) == 2
+    assert "Clarín: " + shared in report
+    assert "Reuters: " + shared in report
     assert "https://clarin.com/a?id=1" in report
     assert "https://reuters.com/b?id=9" in report
-    assert "Reform \\[live\\]" in report
-    assert "https://elpais.com/c_%28draft%29" in report
-    assert len(items) == report.count("](http")
+    assert "Chile and China sign a treaty [live]" in report
+    assert "https://elpais.com/c_(draft)" in report
+    assert "\\[" not in report
 
 
-def test_briefing_outputs_keep_same_title_from_different_publishers(tmp_path):
+def test_briefing_has_no_top_n_cap():
+    end = datetime(2026, 9, 29, 11, tzinfo=timezone.utc)
+    items = [
+        _item(f"Mexico and China sign treaty number {i}", "Clarín", f"https://clarin.com/{i}", market="Argentina", domain="clarin.com", hours_ago=i + 1, end=end)
+        for i in range(40)
+    ]
+    report = build_markdown(items)
+    assert report.count("Clarín:") == 40
+    assert all(f"https://clarin.com/{i}" in report for i in range(40))
+
+
+def test_report_file_is_markdown_only(tmp_path):
     end = datetime(2026, 9, 29, 11, tzinfo=timezone.utc)
     window = CoverageWindow(end - timedelta(hours=24), end, 24, "last 24 hours")
-    shared = "Senate confirms the ambassador"
     items = [
-        Headline(shared, "Clarín", "https://clarin.com/a", end - timedelta(hours=2), "Argentina", "latin_america", "clarin.com"),
-        Headline(shared, "Reuters", "https://reuters.com/b", end - timedelta(hours=1), "International", "international", "reuters.com"),
-        Headline("Cabinet reshuffle", "G1", "https://g1.globo.com/c", end - timedelta(hours=3), "Brazil", "latin_america", "g1.globo.com"),
+        _item("Mexico and Brazil sign a treaty", "Clarín", "https://clarin.com/a", market="Argentina", domain="clarin.com", end=end),
+        _item("Mexico and Brazil sign a treaty", "Reuters", "https://reuters.com/b", market="International", scope="international", domain="reuters.com", hours_ago=1, end=end),
     ]
-    markdown_path, csv_path, json_path = write_outputs(items, window, tmp_path)
-    markdown = markdown_path.read_text(encoding="utf-8")
-    csv_text = csv_path.read_text(encoding="utf-8-sig")
-    ledger = json.loads(json_path.read_text(encoding="utf-8"))
-    assert markdown.count(shared) == 2
-    assert "https://clarin.com/a" in markdown and "https://reuters.com/b" in markdown
-    assert csv_text.count(shared) == 2
-    assert "https://clarin.com/a" in csv_text and "https://reuters.com/b" in csv_text
-    assert len(ledger) == len(items)
-    assert {row["publisher"] for row in ledger} == {"Clarín", "Reuters", "G1"}
-    assert {row["url"] for row in ledger} == {item.url for item in items}
-    assert markdown.count("](http") == len(items)
+    path = write_outputs(items, window, tmp_path)
+    text = path.read_text(encoding="utf-8")
+    assert path.name.endswith(".md")
+    assert text.count("Mexico and Brazil sign a treaty") == 2
+    assert list(tmp_path.glob("*.csv")) == []
+    assert list(tmp_path.glob("*.json")) == []
+    assert "First indexed" not in text
+    assert "seen_at" not in text

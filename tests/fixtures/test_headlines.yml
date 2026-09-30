@@ -1,0 +1,1881 @@
+meta:
+  as_of: '2026-09-30'
+  labelled_by: Grok Bot (executor) applying Sam's rule; NOT reviewed by Sam
+  rule: keep only headlines about how a Latin American country/leader deals with another country/leader/institution. Tier 1 = names a LatAm entity AND a different country/leader/institution, or two LatAm
+    entities. Tier 2 = one LatAm entity + an IR term. Else drop (domestic).
+  source_headline_count: 58
+  total_cases: 249
+  synthetic_cases: 191
+  counts:
+    should_match_tier1: 115
+    should_match_tier2: 5
+    should_drop: 129
+    borderline: 17
+  note: 'IDs T01.. are real example headlines (all headlines found in Prototipo_Noticias, notipo_, notipo__1; the Medios_Posibles file has none). IDs S01.. are synthetic guards. The `expected` label is
+    the rule-based classification; items in `borderline` are the ones Sam should rule on (changing them changes the label). Run: python3 check_entities.py entities.yml test_headlines.yml'
+should_match:
+- id: T01
+  source_file: Prototipo_Noticias.docx.txt
+  section: México
+  publisher: Proceso
+  headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'
+  expected: 1
+  reason: MX figure + 'EU' (Spanish-press abbreviation for Estados Unidos); NYT is a source tag and must be masked
+  borderline: true
+- id: T02
+  source_file: Prototipo_Noticias.docx.txt
+  section: Cuba
+  publisher: Diario de Cuba
+  headline: 'Marco Rubio al régimen cubano: ''Aprenderán la lección por las malas'''
+  expected: 1
+  reason: US Secretary of State addresses Cuba's government
+- id: T05
+  source_file: Prototipo_Noticias.docx.txt
+  section: Nicaragua
+  publisher: Confidencial
+  headline: Proyecto de resolución de la OEA fija a Nicaragua como una “amenaza” para el hemisferio
+  expected: 1
+  reason: Nicaragua + OEA (institution)
+- id: T06
+  source_file: Prototipo_Noticias.docx.txt
+  section: Argentina
+  publisher: DW
+  headline: Argentina threatens UK legal action over Falklands oil
+  expected: 1
+  reason: Argentina + United Kingdom (also Falklands dispute token)
+- id: T07
+  source_file: Prototipo_Noticias.docx.txt
+  section: Argentina
+  publisher: La Nación
+  headline: '“Posibles terroristas”: el vocero presidencial habló de las declaraciones de Milei sobre los extranjeros expulsados'
+  expected: 2
+  reason: Single LatAm entity (Milei/AR) + strong term 'expulsados'
+  borderline: true
+- id: T09
+  source_file: Prototipo_Noticias.docx.txt
+  section: Brasil
+  publisher: El Comercio
+  headline: '“Quieren tomar el río, y también la playa, quieren las tierras raras”: Lula se inspira en Bad Bunny para criticar a Trump | VIDEO'
+  expected: 1
+  reason: Lula (BR) criticises Trump (US)
+- id: T10
+  source_file: Prototipo_Noticias.docx.txt
+  section: Colombia
+  publisher: Reuters
+  headline: El Gobierno de Colombia apela al FMI tras denunciar su crisis fiscal "más crítica"
+  expected: 1
+  reason: Colombia + FMI (institution)
+- id: T13
+  source_file: Prototipo_Noticias.docx.txt
+  section: Bolivia (section header; article is regional)
+  publisher: El País
+  headline: Estados Unidos lanza una nueva ofensiva contra jueces, fiscales, empresarios y políticos de América Latina
+  expected: 1
+  reason: US + regional term 'América Latina'
+  borderline: true
+- id: T14
+  source_file: Prototipo_Noticias.docx.txt
+  section: Chile
+  publisher: El País
+  headline: Kast enfrenta una dura resistencia interna por haber sumado a Chile al Escudo de las Américas de Trump
+  expected: 1
+  reason: Chile/Kast + Escudo de las Américas + Trump
+- id: T16
+  source_file: Prototipo_Noticias.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: 'Marco Rubio: EEUU trabaja con la AN 2015 para elecciones libres en Venezuela “lo antes posible”'
+  expected: 1
+  reason: Rubio/EEUU + Venezuela
+- id: T18
+  source_file: notipo_.docx.txt
+  section: México
+  publisher: El Universal
+  headline: EU tira producción de autos eléctricos en México
+  expected: 1
+  reason: '''EU'' (= Estados Unidos / US firms) + México'
+  borderline: true
+- id: T20
+  source_file: notipo_.docx.txt
+  section: México
+  publisher: Americas Quarterly
+  headline: A Red Flag in Mexico’s Democratic Backsliding- A new law could annul election results in cases of “foreign interference,” handing the ruling party a powerful tool.
+  expected: 2
+  reason: Mexico + strong term 'foreign interference'
+  borderline: true
+- id: T21
+  source_file: notipo_.docx.txt
+  section: Cuba
+  publisher: Reuters – Americas
+  headline: Trump predicts Cuba and US will make a deal
+  expected: 1
+  reason: Trump/US + Cuba
+- id: T22
+  source_file: notipo_.docx.txt
+  section: Cuba
+  publisher: El Diario de Cuba
+  headline: China promete sostener al régimen cubano y exige a EEUU levantar las sanciones
+  expected: 1
+  reason: China + Cuba + EEUU
+- id: T23
+  source_file: notipo_.docx.txt
+  section: Honduras
+  publisher: El Heraldo
+  headline: Caravana de más de 600 migrantes, incluidos hondureños, reanuda su camino hacia la frontera de México con EEUU
+  expected: 1
+  reason: Honduran + Mexico + EEUU (three actors)
+  borderline: true
+- id: T25
+  source_file: notipo_.docx.txt
+  section: Argentina
+  publisher: La Nación
+  headline: El Gobierno denunció vuelos ilegales de una empresa británica entre Malvinas y Punta Arenas
+  expected: 1
+  reason: Malvinas (AR-UK dispute token) + 'británica'; 'El Gobierno' is unnamed so the dispute list carries it
+- id: T28
+  source_file: notipo_.docx.txt
+  section: Colombia
+  publisher: El País
+  headline: 'Los venezolanos sin papeles en Colombia buscan rumbo ante las amenazas de De la Espriella: “Tenemos las manos atadas”'
+  expected: 1
+  reason: 'Venezuelans + Colombia + its president: two LatAm countries'
+- id: T30
+  source_file: notipo_.docx.txt
+  section: Ecuador
+  publisher: Primicias
+  headline: Estados Unidos cancela visas a dos ciudadanos de Ecuador y altos cargos de Bolivia, Colombia y Perú
+  expected: 1
+  reason: US + four LatAm countries
+- id: T35
+  source_file: notipo__1.docx.txt
+  section: México
+  publisher: CNN Español
+  headline: Durante años, Estados Unidos persiguió a los capos de la droga de México. Ahora, tiene en la mira a los políticos
+  expected: 1
+  reason: US + México
+  borderline: true
+- id: T36
+  source_file: notipo__1.docx.txt
+  section: México
+  publisher: Infobae
+  headline: México resiste los aranceles de Trump y desplaza a China como principal socio de Estados Unidos
+  expected: 1
+  reason: 'Mexico + Trump + China + US: textbook IR'
+- id: T40
+  source_file: notipo__1.docx.txt
+  section: El Salvador
+  publisher: Alberto News
+  headline: Venezolanos demandan a dos aerolíneas por vuelos que los trasladaron a la temida cárcel del CECOT en El Salvador
+  expected: 1
+  reason: Venezuelans + El Salvador (two LatAm countries)
+  borderline: true
+- id: T41
+  source_file: notipo__1.docx.txt
+  section: Honduras
+  publisher: BBC Mundo
+  headline: Regresa a Honduras Juan Orlando Hernández, expresidente indultado por Trump tras condena por narcotráfico
+  expected: 1
+  reason: Honduras + Trump pardon
+- id: T42
+  source_file: notipo__1.docx.txt
+  section: Nicaragua
+  publisher: Infobae
+  headline: Nicaragua responde a UE que no es "súbdito" ni "vasallo" de ninguna potencia extranjera
+  expected: 1
+  reason: Nicaragua + UE (Spanish 'UE' = Unión Europea)
+- id: T43
+  source_file: notipo__1.docx.txt
+  section: Nicaragua
+  publisher: Infobae
+  headline: Régimen de Nicaragua eleva a 17 las concesiones mineras a cielo abierto para firmas chinas tras adjudicar dos nuevos lotes
+  expected: 1
+  reason: Nicaragua + 'chinas' (weak adjective, admitted because a non-weak LatAm entity is present)
+  borderline: true
+- id: T44
+  source_file: notipo__1.docx.txt
+  section: Argentina
+  publisher: Filo.news
+  headline: Kristalina Georgieva visita la Argentina y refuerza el respaldo del FMI al gobierno de Javier Milei
+  expected: 1
+  reason: IMF chief + Argentina/Milei
+- id: T46
+  source_file: notipo__1.docx.txt
+  section: Brasil
+  publisher: BBC Mundo
+  headline: Brasil llama a consultas a su embajador en Argentina luego de que Milei calificara a Lula de "convicto" y "ladrón" en Sao Paulo
+  expected: 1
+  reason: Brasil + Argentina + embajador + consultas
+- id: T47
+  source_file: notipo__1.docx.txt
+  section: Brasil
+  publisher: Infobae
+  headline: 'Brasil: por qué entender a nuestro principal socio comercial es una cuestión de pragmatismo, no de ideología'
+  expected: 2
+  reason: Single entity (Brasil) + strong 'socio comercial'
+  borderline: true
+- id: T48
+  source_file: notipo__1.docx.txt
+  section: Colombia
+  publisher: DW
+  headline: Colombia romperá relaciones con Cuba y Nicaragua
+  expected: 1
+  reason: Three LatAm countries + 'romperá relaciones'
+- id: T49
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: Globovisión
+  headline: Ecuador concluye la atención consular presencial que activó en Venezuela tras terremotos
+  expected: 1
+  reason: Ecuador + Venezuela + consular
+- id: T50
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: teleSUR
+  headline: 'Ecuador: piden esclarecer asesinato de fiscal que investigaba ataques de EE.UU. contra pescadores'
+  expected: 1
+  reason: Ecuador + EE.UU.
+  borderline: true
+- id: T51
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: Diálogo Américas
+  headline: China fortalece posición estratégica en el sector del oro y el cobre ecuatorianos
+  expected: 1
+  reason: China + ecuatorianos
+- id: T53
+  source_file: notipo__1.docx.txt
+  section: Perú
+  publisher: Banca y Negocios
+  headline: Keiko Fujimori gobernará Perú en un complejo equilibrio entre EEUU y China
+  expected: 1
+  reason: Peru/Fujimori + EEUU + China
+- id: T54
+  source_file: notipo__1.docx.txt
+  section: Perú
+  publisher: Infobae
+  headline: Autoridades internacionales llegan hoy al Perú para la toma de mando de Keiko Fujimori
+  expected: 2
+  reason: Single entity (Perú) + strong 'autoridades internacionales'; no named foreign country
+  borderline: true
+- id: T55
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: El País
+  headline: Trump dice que Venezuela todavía no está “preparada” para celebrar elecciones
+  expected: 1
+  reason: Trump + Venezuela
+- id: T56
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: El Nacional
+  headline: John Barrett reveló que EE UU aportó hasta 386 millones de dólares para asistencia humanitaria tras los terremotos
+  expected: 1
+  reason: EE UU + John Barrett (US chargé in Caracas; implies VE) - headline never says Venezuela
+  borderline: true
+- id: T58
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: MPPRE (Venezuelan foreign ministry)
+  headline: Venezuela reanuda relaciones consulares con Perú y anuncia salida de la CPI
+  expected: 1
+  reason: Venezuela + Perú + CPI
+- id: S11
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mexico resists Trump tariffs as Sheinbaum seeks deal
+  expected: 1
+  reason: 'English: Mexico + Trump + tariffs (Sam''s own example)'
+- id: S12
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump amenaza con aranceles a Brasil
+  expected: 1
+  reason: Trump + Brasil
+- id: S13
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil chama embaixador em Buenos Aires para consultas
+  expected: 1
+  reason: 'Portuguese: Brasil + Buenos Aires (weak metonym admitted by the non-weak Brasil) + embaixador/consultas'
+- id: S14
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Le Venezuela rompt ses relations diplomatiques avec le Panama
+  expected: 1
+  reason: 'French: Venezuela + Panama'
+- id: S16
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Ecuador expulsa a embajador de Cuba
+  expected: 1
+  reason: Ecuador + Cuba + expulsa/embajador
+- id: S18
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Perú reactiva su embajada en Venezuela
+  expected: 1
+  reason: 'Perú + Venezuela: two LatAm groups, embajada'
+- id: S20
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Puerto Rico y República Dominicana firman acuerdo de cooperación
+  expected: 1
+  reason: 'PR + DO: two LatAm groups'
+- id: S23
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Maduro pide al FMI reabrir el crédito a Venezuela
+  expected: 1
+  reason: case-sensitive Maduro + FMI; (historic-style) sanity check
+- id: S31
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EEUU sanciona a funcionarios venezolanos
+  expected: 1
+  reason: 'TRUE POSITIVE kept: ''sanciona a'' + foreign entity (EEUU) + VE demonym'
+- id: S32
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EE.UU. impone sanciones a Nicaragua
+  expected: 1
+  reason: 'TRUE POSITIVE kept: ''sanciones'' noun'
+- id: S33
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sanciones de la UE contra Venezuela
+  expected: 1
+  reason: 'TRUE POSITIVE kept: ''Sanciones'' + UE + Venezuela'
+- id: S39
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina y Brasil firman acuerdo comercial
+  expected: 1
+  reason: 'POSITIVE CONTROL: two LatAm countries + IR term, no sports term'
+- id: S44
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Colombia sanciona a empresas de EEUU
+  expected: 1
+  reason: 'True positive: Colombia + EEUU (verb+object with foreign entity)'
+- id: S45
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brazil sanctions Venezuelan officials
+  expected: 1
+  reason: 'True positive English: Brazil + Venezuelan'
+- id: S46
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona ley y EEUU reacciona con aranceles a Brasil
+  expected: 1
+  reason: 'Law-signing stoplist must not hide a real IR story: EEUU + aranceles + Brasil'
+- id: S60
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Perú vs Chile: cancilleres piden calma tras incidentes en el partido'
+  expected: 1
+  reason: Sports + strong IR term (cancilleres) => override, kept Tier 1
+- id: S61
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina expulsa a embajador de Brasil tras partido de la Copa
+  expected: 1
+  reason: Sports context but strong IR (expulsa, embajador) => kept
+- id: S62
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Olímpicos: Venezuela denuncia a EEUU por visas a atletas'
+  expected: 1
+  reason: Sports + IR (visas) override => kept
+- id: S66
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido Comunista de Cuba y China firman acuerdo de cooperación
+  expected: 1
+  reason: '''Partido Comunista'' is a political party, excepted from sports ''partido'''
+- id: S67
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El Partido Nacional de Honduras denuncia injerencia de EEUU
+  expected: 1
+  reason: Political party + EEUU; sports_rule exception 'Partido Nacional'
+- id: S68
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina reclama a Brasil por partido de Mercosur
+  expected: 1
+  reason: 'MUST-KEEP (Tester FP): ''partido'' alone is only one soft term (no longer double-counted es+pt) and Mercosur is a strong IR institution'
+- id: S69
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Selección de Colombia visita la Casa Blanca; Petro y Trump hablan
+  expected: 1
+  reason: 'MUST-KEEP (Tester FP): ''Selección de Colombia'' is a hard sports term but leader_override fires (Petro + Trump = two countries'' leaders; LatAm leader + Casa Blanca)'
+- id: S71
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump sanciona a Petro
+  expected: 1
+  reason: 'CONTROL TRUE POSITIVE: Trump + Petro, ''sanciona a'' is a real sanction'
+- id: S72
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido Comunista de Cuba rechaza sanciones de EEUU
+  expected: 1
+  reason: 'CONTROL TRUE POSITIVE: political party (sports exception) + sanciones + EEUU'
+- id: S74
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil gana a Argentina; Lula y Milei se cruzan en redes
+  expected: 1
+  reason: 'CONTROL KEEP: versus verb but two countries'' leaders are named => leader_override keeps it'
+- id: S75
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Seleção brasileira visita Casa Branca; Lula e Trump conversam sobre tarifas
+  expected: 1
+  reason: 'ADV pt: seleção + leaders of BR and US + tarifas'
+- id: S76
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa del Mundo: Milei y Lula acuerdan cumbre sobre el Mundial 2030'
+  expected: 1
+  reason: 'ADV es: copa/mundial 2030 but two LatAm leaders + cumbre'
+- id: S77
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula assiste ao jogo da seleção ao lado de Milei e fecha acordo comercial
+  expected: 1
+  reason: 'ADV pt: jogo/seleção + Lula + Milei + acordo comercial'
+- id: S78
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump threatens sanctions on Brazil after World Cup comments by Lula
+  expected: 1
+  reason: 'ADV en: world cup + Trump + Lula + sanctions'
+- id: S79
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'World Cup: Trump says Mexico and Canada must pay for security, Sheinbaum replies'
+  expected: 1
+  reason: 'ADV en: world cup + Trump vs Sheinbaum'
+- id: S80
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Cancillería de Chile protesta por insultos a hinchas chilenos en partido en Lima
+  expected: 1
+  reason: 'ADV es: partido/hinchas but cancillería (strong IR) + Chile + Lima/Peru'
+- id: S81
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Copa Airlines suspende vuelos a Venezuela por sanciones de EEUU
+  expected: 1
+  reason: 'ADV es: ''Copa Airlines'' is an exception (not sports); sanciones + EEUU + Venezuela'
+- id: S82
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Partido de Mercosur: Milei y Lula discrepan'
+  expected: 1
+  reason: 'ADV es: partido + Mercosur + two leaders'
+- id: S83
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump sanciona a la selección de Venezuela
+  expected: 1
+  reason: 'ADV es: hard sports term ''selección de Venezuela'' but foreign leader (Trump) + LatAm entity and ''sanciona a'''
+- id: S84
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Mundial: Maduro critica a Trump por la sede'
+  expected: 1
+  reason: 'ADV es: mundial + Maduro vs Trump'
+- id: S94
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Xi Jinping invita a la selección de Perú a Pekín; Boluarte agradece
+  expected: 1
+  reason: 'ADV es: selección de Perú + Xi Jinping (foreign leader) + Peru'
+- id: S98
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Venezuela acusa a Colombia de espionaje en el Campeonato
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: ''Campeonato'' is now a SOFT term (single soft cue is not sports) + acusa/espionaje policy words'
+- id: S99
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Colombia y Venezuela empatan 1-1 en negociación de frontera
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: verb ''empatan'' + 1-1 are soft-only; ''negociación'' (strong policy word) overrides'
+- id: S112
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina acusa a Chile de espionaje durante el partido por la Liga
+  expected: 1
+  reason: 'ADV keep es: ''partido''+''liga'' (2 soft) but acusa+espionaje strong policy words override'
+- id: S113
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Perú y Bolivia vencen 2-0 en diálogo por la frontera
+  expected: 1
+  reason: 'ADV keep es: verb+score = ONE soft signal, no sports-person cue; ambiguous words ''dialogo''/''frontera'' suffice for a single soft signal'
+- id: S114
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil acusa a Argentina de espionagem no campeonato
+  expected: 1
+  reason: 'ADV keep pt: campeonato soft + acusa/espionagem'
+- id: S115
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brazil accuses Argentina of spying at championship
+  expected: 1
+  reason: 'ADV keep en: championship soft + accuses'
+- id: S116
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mexico and Canada draw 1-1 in USMCA talks
+  expected: 1
+  reason: 'ADV keep en: ''draw'' + score soft-only; USMCA (strong IR institution) + talks'
+- id: S117
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Chile y Argentina firman tratado de límites; partido de fútbol por la paz
+  expected: 1
+  reason: 'ADV keep es: tratado strong word; ''partido'' soft + ''futbol'' hard => hard is rescued only by override_ir ''tratado'''
+- id: S118
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Venezuela expulsa a embajador de Colombia tras el campeonato
+  expected: 1
+  reason: 'ADV keep es: campeonato soft only; embajador strong'
+- id: S119
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Ecuador y Perú empatan en negociaciones por disputa territorial
+  expected: 1
+  reason: 'ADV keep es: empatan (soft) + negociaciones + disputa territorial'
+- id: S120
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Colombia denuncia a Venezuela ante la CIJ por el campeonato de pesca
+  expected: 1
+  reason: 'ADV keep es: campeonato soft + CIJ strong'
+- id: S121
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Bolivia vence a Chile en La Haya: fallo de la CIJ sobre el Silala'
+  expected: 1
+  reason: 'ADV keep es: ''vence a'' versus + La Haya/CIJ override'
+- id: S122
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina y Uruguay negocian acuerdo por el empate técnico en las encuestas
+  expected: 1
+  reason: 'ADV keep es: only ONE soft signal (''empate''); ambiguous ''acuerdo''/''negocian'' words rescue a single soft cue (two LatAm groups)'
+- id: S124
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Colombia 2 Venezuela 2: Maduro felicita a Petro por el amistoso'
+  expected: 1
+  reason: 'ADV keep es: bare score + amistoso are sports, but leader_override (Maduro + Petro = leaders of two countries) keeps it'
+- id: S126
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Sanciones a Venezuela: Brasil 2 Argentina 1 en el mercado de bonos'
+  expected: 1
+  reason: 'ADV keep es: bare score shape but ''sanciones'' (policy) suppresses bare_score'
+- id: S127
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina 2 Chile 1 millones de dólares en acuerdo minero
+  expected: 1
+  reason: 'ADV keep es: ''1 millones'' unit => not a score; acuerdo policy word'
+- id: S128
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula y Trump asisten a un partido durante visita de Estado
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: ''partido'' + leaders of two countries (no namesake cue) => leader_override'
+- id: S129
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa: Trump y Sheinbaum se reúnen antes del Mundial'
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: ''copa'' hard, but Trump + Sheinbaum = two countries'' leaders'
+- id: S130
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido de Petro rompe con Milei
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: ''Partido de Petro'' is not a cue; two leaders'
+- id: S131
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Milei y Lula se enfrentan en la final de la Copa
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: two LatAm leaders (no namesake cue adjacent)'
+- id: S132
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona ley de aranceles contra EE.UU.
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: aranceles + EE.UU.; ''sanciona ley'' law-signing stoplist does not hide it'
+- id: S155
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Senado de Chile aprueba 30-10 tratado con la UE
+  expected: 1
+  reason: 'CONTROL: vote count 30-10 (>19 and ''senado''/''aprueba'' block) + tratado + UE'
+- id: S156
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil y China firman acuerdo 2026-2030
+  expected: 1
+  reason: 'CONTROL: year range is not a scoreline; Brasil + China'
+- id: S157
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina y Chile fijan reunión para 2026-09-30 sobre Mercosur
+  expected: 1
+  reason: 'CONTROL: ISO date + Mercosur'
+- id: S158
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil y Argentina acuerdan plazo de 1-2 semanas para negociar tratado
+  expected: 1
+  reason: 'CONTROL: ''1-2 semanas'' has a unit'
+- id: S159
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Senado de Colombia aprobó 5-4 tratado de extradición con EEUU
+  expected: 1
+  reason: 'CONTROL: 5-4 vote + senado + extradición'
+- id: S160
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Corte de Brasil falla 5-4 a favor de acuerdo con EEUU
+  expected: 1
+  reason: 'CONTROL: court vote 5-4 (block term ''corte'')'
+- id: S161
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EEUU y Brasil firman pacto 2-1 sobre aranceles
+  expected: 1
+  reason: 'CONTROL: ''2-1'' without any sports term/verb and IR terms present'
+- id: S162
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Venezuela y Colombia reabren frontera 7:00 am tras acuerdo
+  expected: 1
+  reason: 'CONTROL: clock time is not a scoreline'
+- id: S163
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Petro y Trump hablan 5-10 minutos sobre aranceles
+  expected: 1
+  reason: 'CONTROL: ''5-10 minutos'' has a unit; two leaders'
+- id: S164
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Acuerdo Brasil-Argentina 3-2 en votos del Congreso sobre Mercosur
+  expected: 1
+  reason: 'CONTROL: 3-2 in votes + Congreso + Mercosur'
+- id: S165
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: La UE y Mercosur firman acuerdo
+  expected: 1
+  reason: 'BLOC (Reviewer/Tester FN): Mercosur (LatAm bloc) + UE, no country named'
+- id: S166
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EU y Mercosur cierran tratado de libre comercio
+  expected: 1
+  reason: 'BLOC: Spanish-press ''EU'' = Estados Unidos (lang_only es) + Mercosur'
+- id: S167
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur rechaza aranceles de Trump
+  expected: 1
+  reason: 'BLOC: Mercosur + Trump'
+- id: S168
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: CELAC y la UE celebran cumbre
+  expected: 1
+  reason: 'BLOC: CELAC + UE'
+- id: S169
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Comunidad Andina rechaza aranceles de EE.UU.
+  expected: 1
+  reason: 'BLOC: Comunidad Andina + EE.UU.'
+- id: S170
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur y China negocian acuerdo comercial
+  expected: 1
+  reason: 'BLOC: Mercosur + China'
+- id: S171
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Alianza del Pacífico y la UE firman memorando
+  expected: 1
+  reason: 'BLOC: Alianza del Pacífico + UE'
+- id: S172
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Milei y Lula chocan en la cumbre del Mercosur
+  expected: 1
+  reason: Two LatAm leaders (AR + BR) + bloc; bloc must not break it
+- id: S173
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosul e a UE assinam acordo comercial
+  expected: 1
+  reason: 'BLOC pt: Mercosul alias + UE'
+- id: S174
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Le Mercosur et l'UE signent un accord
+  expected: 1
+  reason: 'BLOC fr: Mercosur + UE'
+- id: S175
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EU and Mercosur sign trade deal
+  expected: 1
+  reason: 'BLOC en: English ''EU'' = European Union + Mercosur'
+- id: S176
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Pacific Alliance and China launch talks
+  expected: 1
+  reason: 'BLOC en: Pacific Alliance + China'
+- id: S177
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: ALBA-TCP condena sanciones de EEUU
+  expected: 1
+  reason: 'BLOC: ALBA-TCP (case-sensitive) + EEUU'
+- id: S178
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: CAN y la UE firman acuerdo comercial
+  expected: 1
+  reason: 'BLOC: weak, es-only, case-sensitive ''CAN'' admitted by a non-weak different group (UE)'
+- id: S179
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur y CELAC firman declaración conjunta
+  expected: 1
+  reason: Two different LatAm blocs = 'two LatAm groups' rule (Tier 1 per tier_rules)
+- id: S180
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur sanciona a Venezuela
+  expected: 1
+  reason: BLOC + LatAm country (two LatAm groups)
+- id: S181
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur rechaza aranceles
+  expected: 2
+  reason: BLOC alone + strong ir_term (aranceles) = Tier 2
+should_drop:
+- id: T03
+  source_file: Prototipo_Noticias.docx.txt
+  section: Cuba
+  publisher: Diario de Cuba
+  headline: Con Cuba hundida en la miseria, Díaz-Canel quiere 'ampliar' la vigilancia de los CDR
+  expected: drop
+  reason: Domestic repression/surveillance; Cuba + its own leader = one entity, no IR term
+- id: T04
+  source_file: Prototipo_Noticias.docx.txt
+  section: Honduras
+  publisher: El Heraldo
+  headline: 'Tegucigalpa cumple un aniversario bajo el azote criminal: “Tienen 24 horas para salir o si no los topamos a tiros”'
+  expected: drop
+  reason: Local crime/city news
+- id: T08
+  source_file: Prototipo_Noticias.docx.txt
+  section: Argentina
+  publisher: La Nación
+  headline: 'El riesgo país subió 18% en el mes: las tres preocupaciones de los inversores sobre la economía de Milei'
+  expected: drop
+  reason: Domestic economy; 'riesgo país' and 'inversores' are weak terms only
+- id: T11
+  source_file: Prototipo_Noticias.docx.txt
+  section: Colombia
+  publisher: El Colombiano
+  headline: 'Así es la megacárcel que Abelardo ordenó terminar pronto: ¿cuántos cupos tendrá?'
+  expected: drop
+  reason: Domestic prison policy; first-name-only 'Abelardo' is a weak alias
+- id: T12
+  source_file: Prototipo_Noticias.docx.txt
+  section: Ecuador
+  publisher: Primicias
+  headline: El caudal de Coca Codo Sinclair, la mayor hidroeléctrica de Ecuador, ha caído desde mediados de septiembre de 2026
+  expected: drop
+  reason: Domestic energy (Chinese-built plant is not mentioned in the headline)
+- id: T15
+  source_file: Prototipo_Noticias.docx.txt
+  section: Venezuela
+  publisher: Americas Quarterly
+  headline: Can Venezuela’s Push for Elections Succeed?
+  expected: drop
+  reason: Headline has a single LatAm entity and no IR term (the body is likely about US-Venezuela dealings, but the filter is headline-only)
+  borderline: true
+- id: T17
+  source_file: Prototipo_Noticias.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: Delcy Rodríguez solicita a la AN la reforma parcial de la Ley contra el Odio
+  expected: drop
+  reason: Domestic legislation
+- id: T19
+  source_file: notipo_.docx.txt
+  section: México
+  publisher: AP
+  headline: Mexico’s journalists have long faced bullets. Now lawsuits against them are rising
+  expected: drop
+  reason: Domestic press freedom
+- id: T24
+  source_file: notipo_.docx.txt
+  section: Nicaragua
+  publisher: Confidencial
+  headline: Incrementan a 15 las mujeres presas políticas en desaparición forzada
+  expected: drop
+  reason: Domestic human-rights; headline does not name Nicaragua at all
+- id: T26
+  source_file: notipo_.docx.txt
+  section: Argentina
+  publisher: Infobae
+  headline: El Gobierno relativiza la caída del índice de confianza y busca explicar los cuestionamientos de Milei a las mediciones
+  expected: drop
+  reason: Domestic politics/economy
+- id: T27
+  source_file: notipo_.docx.txt
+  section: Colombia
+  publisher: El Heraldo (CO)
+  headline: 'De la Espriella arremete contra el gobierno Petro tras decisión sobre Iván Name: “Los corruptos tienen que caer”'
+  expected: drop
+  reason: Two Colombian leaders = ONE country group; domestic
+- id: T29
+  source_file: notipo_.docx.txt
+  section: Ecuador
+  publisher: Expreso
+  headline: 'María Paz Jervis deja la CIP tras advertir días antes: “Pocas veces he visto tanto miedo'
+  expected: drop
+  reason: Domestic business-chamber news; no entity in the headline
+- id: T31
+  source_file: notipo_.docx.txt
+  section: Perú
+  publisher: El Comercio
+  headline: 'Sueldo mínimo: Keiko Fujimori aprobó primer alza de S/100 en la RMV desde octubre'
+  expected: drop
+  reason: Domestic labour policy
+- id: T32
+  source_file: notipo_.docx.txt
+  section: Venezuela
+  publisher: El País
+  headline: Tras los intentos frustrados de retorno a Venezuela de María Corina Machado, vuelve su jefa de Comunicaciones
+  expected: drop
+  reason: Opposition staff news; single country
+- id: T33
+  source_file: notipo_.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: Familiares de presos políticos exigen excarcelaciones y el fin de “tribunales de terrorismo”
+  expected: drop
+  reason: Domestic; no entity
+- id: T34
+  source_file: notipo_.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: Cabello niega bloqueo de medios y advierte que la libertad de expresión “no les pertenece”
+  expected: drop
+  reason: 'Domestic: ''bloqueo de medios'' is a weak term, must not be read as economic blockade'
+- id: T37
+  source_file: notipo__1.docx.txt
+  section: Cuba
+  publisher: Infobae
+  headline: Díaz-Canel asegura que Cuba es víctima de un "genocidio fríamente calculado"
+  expected: drop
+  reason: Headline names no foreign actor or IR term (implicit US embargo)
+  borderline: true
+- id: T38
+  source_file: notipo__1.docx.txt
+  section: El Salvador
+  publisher: El Nuevo Herald
+  headline: Tras derrotar a las pandillas, El Salvador enfrenta la incertidumbre económica
+  expected: drop
+  reason: Domestic economy/security
+- id: T39
+  source_file: notipo__1.docx.txt
+  section: El Salvador
+  publisher: DW
+  headline: 'El Salvador: oposición elige rivales de Bukele para comicios'
+  expected: drop
+  reason: Domestic elections
+- id: T45
+  source_file: notipo__1.docx.txt
+  section: Argentina
+  publisher: Clarín
+  headline: '“Momento notable”: La carne argentina, con fortaleza en los precios internacionales'
+  expected: drop
+  reason: Agribusiness prices; 'internacionales' is not an IR term
+- id: T52
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: La República
+  headline: Más de 1000 menores fueron abusadas en la frontera con Ecuador
+  expected: drop
+  reason: Single LatAm entity; 'frontera' is weak; child-abuse crime story
+- id: T57
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: DW
+  headline: Machado no participará en diálogos con gobierno de Venezuela
+  expected: drop
+  reason: Domestic opposition vs government; 'diálogos' is weak
+- id: S01
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Nuevo México aprueba ley de inmigración
+  expected: drop
+  reason: 'Stoplist: US state, no LatAm entity (note: if the matcher did not mask it, it would be a false ''México'').'
+- id: S02
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: New Mexico governor signs border security bill
+  expected: drop
+  reason: 'Stoplist: New Mexico'
+- id: S03
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Panama Papers: fiscalía pide prisión para fundadores de Mossack Fonseca'
+  expected: drop
+  reason: 'DECISION: Panama Papers stoplisted; no other entity'
+- id: S04
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Guinea Ecuatorial firma acuerdo con Rusia
+  expected: drop
+  reason: Equatorial Guinea is not Ecuador; masked
+- id: S05
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Georgia y la UE firman acuerdo comercial
+  expected: drop
+  reason: No LatAm entity
+- id: S06
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Chile con carne recipe wins award in Texas
+  expected: drop
+  reason: 'Food: chile con carne stoplisted'
+- id: S07
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Colombia Británica declara emergencia por incendios
+  expected: drop
+  reason: British Columbia masked; 'Colombia' must not match
+- id: S08
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Salvador de Bahía recibe cumbre de alcaldes
+  expected: drop
+  reason: Bare 'Salvador' is not an El Salvador alias; 'cumbre' alone is Tier 2 only with a LatAm entity
+- id: S09
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Bolivia: la paz social se resquebraja por el paro de transportistas'
+  expected: drop
+  reason: Single entity, no IR term ('paz' is not an alias for Paz)
+- id: S10
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Peña Nieto enfrenta nuevo proceso judicial
+  expected: drop
+  reason: Bare surname 'Peña' is not an alias; no country named
+- id: S15
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sheinbaum anuncia nuevo programa de becas para jóvenes
+  expected: drop
+  reason: Domestic social policy
+- id: S17
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Chile aprueba reforma de pensiones
+  expected: drop
+  reason: Domestic
+- id: S19
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Puerto Rico y EEUU negocian fondos federales para Medicaid
+  expected: drop
+  reason: PR+US is federal/domestic unless a strong IR term is present
+- id: S21
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El precio del dólar cierra en alza en Argentina
+  expected: drop
+  reason: Weak/no IR term; 'dólar' is not an IR term
+- id: S22
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: WHO warns of dengue outbreak in Honduras
+  expected: drop
+  reason: English 'WHO' intentionally not an alias; single entity, no IR term
+- id: S24
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El maduro proceso de paz sigue en Colombia
+  expected: drop
+  reason: Lowercase 'maduro' (adjective) must not match; single entity, no IR term
+- id: S25
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona ley de salario mínimo
+  expected: drop
+  reason: 'REGRESSION (Tester FP): es ''sanciona ley'' = signs into law, not a sanction; law_signing_stoplist'
+- id: S26
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sancionou lei do salário mínimo
+  expected: drop
+  reason: 'REGRESSION: pt ''sancionou lei'' = signed into law'
+- id: S27
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Milei sanciona el proyecto de presupuesto
+  expected: drop
+  reason: 'Law-signing: sanciona el proyecto'
+- id: S28
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sheinbaum sancionó la ley de pensiones
+  expected: drop
+  reason: 'Law-signing: sancionó la ley'
+- id: S29
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona decreto sobre el agro
+  expected: drop
+  reason: 'Law-signing: sanciona decreto'
+- id: S30
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Boric sanciona reforma de pensiones
+  expected: drop
+  reason: Law-signing with reform object; single entity, bare 'sanciona' no longer an ir_term
+- id: S34
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Chile vs Argentina: final de la Copa'
+  expected: drop
+  reason: 'REGRESSION (Tester FP): sports fixture between two countries; sports_rule hard term ''copa'''
+- id: S35
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil derrota a Argentina en las eliminatorias
+  expected: drop
+  reason: 'REGRESSION (Tester FP): sports; ''eliminatorias'' + ''derrota a'''
+- id: S36
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina vence a Brasil
+  expected: drop
+  reason: 'Sports guard: versus verb ''vence a'' with two country NAMES and no IR term'
+- id: S37
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mundial 2030 sede Uruguay Argentina Paraguay
+  expected: drop
+  reason: 'Sports guard: World Cup hosting (three countries); sports term ''mundial 2030'''
+- id: S38
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Conmebol sanciona a Argentina
+  expected: drop
+  reason: 'Sports discipline guard: sports body (Conmebol) + ''sanciona a''; sanctions override does NOT apply when a sports body is present'
+- id: S40
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Petro sanciona la ley de reforma laboral
+  expected: drop
+  reason: Law-signing (Colombia)
+- id: S41
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona orçamento 2027
+  expected: drop
+  reason: 'Law-signing pt: orçamento'
+- id: S42
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanctions minimum wage law
+  expected: drop
+  reason: English wire-copy 'sanctions a law' = approves; must not be read as sanctions
+- id: S43
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Le président Lula sanctionne la loi sur le salaire minimum
+  expected: drop
+  reason: French 'sanctionner la loi' = promulgate
+- id: S47
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Chile: Gobierno publica ley que sanciona el acoso callejero'
+  expected: drop
+  reason: Domestic law that 'sanciona' (penalises) harassment; single entity, not an ir_term
+- id: S48
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Michael Jordan donates to Chile earthquake relief
+  expected: drop
+  reason: '''Jordan'' the person is not the country; single entity, no IR term'
+- id: S49
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Jordan Peterson visits Argentina
+  expected: drop
+  reason: 'Same: Jordan is not an alias; single entity'
+- id: S50
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Guinea junta hosts Brazilian delegation
+  expected: drop
+  reason: Bare 'Guinea' stoplisted; 'delegation' weak; single LatAm demonym
+- id: S51
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Georgia legislature passes bill on Mexico border wall
+  expected: drop
+  reason: Georgia stoplisted; Mexico single entity, 'border' weak
+- id: S52
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump visita Ohio y habla de impuestos
+  expected: drop
+  reason: US-only, domestic; no LatAm entity
+- id: S53
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Biden firma ley de salud; Puerto Rico recibirá fondos
+  expected: drop
+  reason: PR + US federal; no strong IR term
+- id: S54
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mexico beats USA in Gold Cup final
+  expected: drop
+  reason: 'Sports English: ''beats'' + final/Gold Cup-style fixture between two countries'
+- id: S55
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Le Brésil bat l'Argentine en finale de la Coupe
+  expected: drop
+  reason: 'Sports French: coupe/finale'
+- id: S56
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brazil beats Argentina 3-0 in World Cup qualifier
+  expected: drop
+  reason: 'Sports English: world cup qualifier'
+- id: S57
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Selección de México gana a EEUU en amistoso
+  expected: drop
+  reason: 'Sports: Selección de + gana a'
+- id: S58
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sancionan a árbitro argentino tras el clásico con Brasil
+  expected: drop
+  reason: 'Sports discipline (árbitro/clásico): ''sancionan a'' must not override when sport terms hit and no sports-body-free IR term'
+- id: S59
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Lima: muere un hincha tras el partido Perú vs Chile'
+  expected: drop
+  reason: Sports violence story
+- id: S63
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Mundial de Qatar: Argentina y Francia definen la final'
+  expected: drop
+  reason: 'Sports: mundial de + final; non-LatAm counterpart irrelevant'
+- id: S64
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Miss Colombia visita Venezuela
+  expected: drop
+  reason: Pageant noise (Miss <país>)
+- id: S65
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula derrota a Bolsonaro en las urnas
+  expected: drop
+  reason: 'Politics, not sports: leaders only, single country, no IR term'
+- id: S70
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sheinbaum sanciona reforma judicial
+  expected: drop
+  reason: 'CONTROL: law-signing, single-country leader; must not be read as sanctions'
+- id: S73
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina derrota a la inflación
+  expected: drop
+  reason: 'CONTROL: ''derrota a'' is a versus verb but only one country group and no opponent country => not a fixture; domestic economy'
+- id: S85
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El entrenador Ortega renueva con la selección de Nicaragua
+  expected: drop
+  reason: 'ADV es: ''Ortega'' is a coach namesake (sports_person_cues), not Daniel Ortega; sports drop stays'
+- id: S86
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Delantero Petro marca dos goles con la selección de Colombia
+  expected: drop
+  reason: 'ADV es: striker namesake ''Petro'' is not the president'
+- id: S87
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Coach Petro Silva leads Colombia to World Cup win over US
+  expected: drop
+  reason: 'ADV en: coach namesake + two country names in a fixture'
+- id: S88
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Jogo Brasil x Argentina termina em goleada de 3 a 0 no Maracanã
+  expected: drop
+  reason: 'ADV pt: pure fixture (jogo + goleada)'
+- id: S89
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sheinbaum inaugura estadio para el Mundial 2026
+  expected: drop
+  reason: 'ADV es: single leader, domestic World Cup infrastructure; no foreign entity'
+- id: S90
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: La selección de Uruguay vence a Paraguay por 2-0 en Asunción
+  expected: drop
+  reason: 'ADV es: pure fixture'
+- id: S91
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido de gobierno en Perú pierde en el Congreso
+  expected: drop
+  reason: 'ADV es: ''partido de gobierno'' = ruling party; single country, no IR term, no 2nd soft cue'
+- id: S92
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Maduro sanciona ley del Mundial
+  expected: drop
+  reason: 'ADV es: law-signing + mundial; single leader'
+- id: S93
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Campeonato: Lula sanciona ley del deporte'
+  expected: drop
+  reason: 'ADV pt/es: sports word + law-signing; ''deporte'' must not trigger the deport* IR term (tightened to deport/deportation)'
+- id: S95
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Amistoso Uruguay-Paraguay termina 1-1
+  expected: drop
+  reason: 'TESTER FP: pure football result; ''amistoso'' hard term + scoreline 1-1 (soft)'
+- id: S96
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El entrenador Lula Da Silva dirige a Brasil ante Argentina
+  expected: drop
+  reason: 'TESTER FP: namesake cue ''entrenador'' => Lula is not a leader AND the namesake cue itself starts the sports rule'
+- id: S97
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Gol de Trump en Argentina vs Chile
+  expected: drop
+  reason: 'TESTER FP: ''gol de'' before a name = namesake player (cue), not Trump the leader; also ''gol'' hard'
+- id: S100
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Paraguay y Uruguay: acuerdo por fichaje de delantero'
+  expected: drop
+  reason: 'REVIEWER MUST-DROP: football transfer; fichaje/fichar/traspaso de jugador are hard sports terms, so ''acuerdo'' cannot rescue'
+- id: S101
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina y Chile sellan acuerdo de gas en la final de la Copa
+  expected: drop
+  reason: 'KNOWN GAP (Reviewer): hard term ''Copa'' is never rescued; rare; logged, not fixed. Matcher frozen per room decision'
+- id: S102
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil 2 Argentina 1
+  expected: drop
+  reason: 'REVIEWER MUST-DROP: bare score ''<country> N <country> M'' (no dash) is a hard-ish sports signal; no policy/vote/court word'
+- id: S103
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Chile vs Argentina: final de la Copa'
+  expected: drop
+  reason: 'NO-RESCUE: pure fixture; hard ''copa'' + vs'
+- id: S104
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Conmebol sanciona a Argentina
+  expected: drop
+  reason: 'NO-RESCUE: sports body discipline; ''sanciona'' is not a policy word'
+- id: S105
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Chile y Perú empatan 0-0
+  expected: drop
+  reason: 'NO-RESCUE: soft-only verb + score, no policy word'
+- id: S106
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Acuerdo de pase del delantero con el club antes del Mundial 2026; Argentina y Brasil pendientes
+  expected: drop
+  reason: 'ADV-SPORTS es: ''acuerdo'' ambiguous word, hard ''mundial 2026'' + delantero cue => stays sports'
+- id: S107
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Gol en la frontera del área: Argentina vence 2-1 a Chile'
+  expected: drop
+  reason: 'ADV-SPORTS es: ''frontera'' in pitch sense; hard ''gol'' => no rescue'
+- id: S108
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil y Uruguay empatan 1-1; el técnico denuncia al árbitro
+  expected: drop
+  reason: 'ADV-SPORTS es: ambiguous ''denuncia'' + hard ''arbitro''/''tecnico'' cue => no rescue'
+- id: S109
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Clásico Colombia vs Ecuador: acuerdo de último minuto deja 2-2'
+  expected: drop
+  reason: 'ADV-SPORTS es: ambiguous ''acuerdo'' but versus + score + clasico = several soft signals (>1) => no rescue'
+- id: S110
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Chile 1 Perú 0: el delantero reclama penal en la frontera del área'
+  expected: drop
+  reason: 'ADV-SPORTS es: bare score (hard-ish) + delantero; ''reclama''/''frontera'' ambiguous only'
+- id: S111
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Jogo Brasil x Chile: acordo de transferência do atacante e empate 1-1'
+  expected: drop
+  reason: 'ADV-SPORTS pt: ''acordo'' ambiguous; jogo + empate(soft x2) + atacante cue'
+- id: S123
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Chile ganó 3-0 la final del torneo de tenis
+  expected: drop
+  reason: 'ADV es: hard tenis/torneo; single entity'
+- id: S125
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Paraguay 1 Bolivia 0 en el Defensores del Chaco
+  expected: drop
+  reason: 'ADV es: bare score, no dash, no policy words'
+- id: S133
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil vence a Argentina en la Copa; Milei critica al árbitro
+  expected: drop
+  reason: 'BORDERLINE (Sam to decide): fixture result + a leader commenting on the referee; one leader only, no foreign entity => drop'
+  borderline: true
+- id: S134
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias
+  expected: drop
+  reason: 'BORDERLINE (Sam to decide): leader celebrates a qualifier win; leaders of one country only => drop'
+  borderline: true
+- id: S135
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Uruguay 2-1 Paraguay
+  expected: drop
+  reason: ADV scoreline directly between two country names, no verb
+- id: S136
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Chile y Perú empatan 0-0 en Santiago
+  expected: drop
+  reason: 'ADV es: result verb ''empatan'' + 0-0'
+- id: S137
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Colombia iguala con Ecuador 1-1 en la clasificatoria
+  expected: drop
+  reason: 'ADV es: ''iguala con'' + clasificatoria'
+- id: S138
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil goleia Bolívia por 5 a 0 pela Libertadores
+  expected: drop
+  reason: 'ADV pt: goleia + ''5 a 0'' + Libertadores'
+- id: S139
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina beat Chile 2-0 in a friendly
+  expected: drop
+  reason: 'ADV en: beat + 2-0 + friendly'
+- id: S140
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mexico and Colombia draw 1-1 in friendly match
+  expected: drop
+  reason: 'ADV en: draw + friendly match'
+- id: S141
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Venezuela empató con Perú en el Estadio Monumental
+  expected: drop
+  reason: 'ADV es: ''empató con'' + estadio'
+- id: S142
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Paraguay vence a Uruguay y se acerca al Mundial
+  expected: drop
+  reason: 'ADV es: vence a + two countries'
+- id: S143
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Perú gana a Bolivia 2x1
+  expected: drop
+  reason: 'ADV es: gana a + 2x1'
+- id: S144
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Técnico de Colombia critica al árbitro tras derrota ante Brasil
+  expected: drop
+  reason: 'ADV es: árbitro (hard) + derrota ante'
+- id: S145
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Sudamericana: Chile vence a Argentina en penales'
+  expected: drop
+  reason: 'ADV es: Sudamericana + vence a'
+- id: S146
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Uruguay-Paraguay: amistoso termina en goleada'
+  expected: drop
+  reason: 'ADV es: amistoso + goleada'
+- id: S147
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Brasil x Argentina: Seleção vence amistoso por 3 a 1'
+  expected: drop
+  reason: 'ADV pt: amistoso + vence + 3 a 1'
+- id: S148
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: England win over Brazil in friendly as Brazil fans boo
+  expected: drop
+  reason: 'ADV en: win over + friendly (non-LatAm counterpart; single LatAm entity anyway)'
+- id: S149
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Campeonato sudamericano: Argentina golea 4-0 a Bolivia'
+  expected: drop
+  reason: 'ADV es: campeonato + golea a + 4-0'
+- id: S150
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: DT Milei dirige a Argentina ante Chile
+  expected: drop
+  reason: 'ADV es: namesake cue DT + Milei; must drop although no hard term'
+- id: S151
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Volante Petro marca para Colombia frente a Ecuador
+  expected: drop
+  reason: 'ADV es: namesake cue volante'
+- id: S152
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Capitán Lula lleva a Brasil ante Uruguay
+  expected: drop
+  reason: 'ADV es: namesake cue capitán'
+- id: S153
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El arquero Trump ataja penal en Chile vs Argentina
+  expected: drop
+  reason: 'ADV es: namesake cue arquero + vs'
+- id: S154
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Goles de Sheinbaum en México ante Brasil
+  expected: drop
+  reason: 'ADV es: ''goles de'' namesake cue'
+- id: S182
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur aprueba presupuesto interno
+  expected: drop
+  reason: BLOC alone, no foreign actor, no strong ir_term => domestic
+- id: S183
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur anuncia reunión de ministros de economía
+  expected: drop
+  reason: BLOC alone, no strong ir_term
+- id: S184
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur y Mercosul
+  expected: drop
+  reason: 'Same bloc twice (es/pt spelling) is ONE group: no double count, no Tier 1'
+- id: S185
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El Mercosur (Mercosul) celebra aniversario
+  expected: drop
+  reason: 'Same bloc in two spellings: one group, no ir_term'
+- id: S186
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Cumbre Sudamericana de fútbol
+  expected: drop
+  reason: Sports summit; no entity at all
+- id: S187
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Final de la Copa Mercosur: Boca vence a River'
+  expected: drop
+  reason: 'Copa Mercosur football: bloc alone, no ir_term, hard sports term'
+- id: S188
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa Mercosur: Flamengo y Peñarol empatan 1-1'
+  expected: drop
+  reason: 'Copa Mercosur football: bloc alone, scoreline + hard term'
+- id: S189
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa Mercosur: Boca vence a River en penales'
+  expected: drop
+  reason: 'Copa Mercosur football: bloc alone'
+- id: S190
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump says tariffs can rise next month
+  expected: drop
+  reason: English modal 'can' must not match weak case-sensitive CAN; no LatAm entity
+- id: S191
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Festival de Alba premia a actriz española
+  expected: drop
+  reason: Mixed-case 'Alba' (given name) must not match case-sensitive ALBA
+borderline:
+- id: T01
+  headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'
+  publisher: Proceso
+  current_label: 1
+  question_for_sam: 'US agencies analysing allegations against a Mexican politician (no formal probe per NYT): decide if ''US investigates Mexican politician'' counts as IR.'
+- id: T07
+  headline: '“Posibles terroristas”: el vocero presidencial habló de las declaraciones de Milei sobre los extranjeros expulsados'
+  publisher: La Nación
+  current_label: 2
+  question_for_sam: Expulsion of foreigners is domestic immigration policy unless a specific country is named; matches only via the 'expuls*' term.
+- id: T13
+  headline: Estados Unidos lanza una nueva ofensiva contra jueces, fiscales, empresarios y políticos de América Latina
+  publisher: El País
+  current_label: 1
+  question_for_sam: Filed under BOLIVIA in the source but the headline is region-wide and names no country; matches only through the LATAM regional term. Decide whether region-wide items are wanted.
+- id: T15
+  headline: Can Venezuela’s Push for Elections Succeed?
+  publisher: Americas Quarterly
+  current_label: drop
+  question_for_sam: Sam's briefing kept it; headline gives no foreign actor. Drop under the headline-only rule, or whitelist by publisher/topic?
+- id: T18
+  headline: EU tira producción de autos eléctricos en México
+  publisher: El Universal
+  current_label: 1
+  question_for_sam: Probably US automakers cutting EV output in Mexico - corporate/economic, not state-to-state. 'EU' also reads as European Union outside Spanish-press convention.
+- id: T20
+  headline: A Red Flag in Mexico’s Democratic Backsliding- A new law could annul election results in cases of “foreign interference,” handing the ruling party a powerful tool.
+  publisher: Americas Quarterly
+  current_label: 2
+  question_for_sam: 'Domestic law about foreign interference: IR-adjacent only through the term; no foreign actor named.'
+- id: T23
+  headline: Caravana de más de 600 migrantes, incluidos hondureños, reanuda su camino hacia la frontera de México con EEUU
+  publisher: El Heraldo
+  current_label: 1
+  question_for_sam: 'Migrant caravan: governments are not acting in the headline. By the entity rule it is Tier 1; by the ''how a country deals with another'' test it is not.'
+- id: T35
+  headline: Durante años, Estados Unidos persiguió a los capos de la droga de México. Ahora, tiene en la mira a los políticos
+  publisher: CNN Español
+  current_label: 1
+  question_for_sam: 'US law enforcement targeting Mexican politicians: Tier 1 by entities; Sam''s ''DEA/US investigates Mexican politician'' borderline.'
+- id: T37
+  headline: Díaz-Canel asegura que Cuba es víctima de un "genocidio fríamente calculado"
+  publisher: Infobae
+  current_label: drop
+  question_for_sam: Implicitly about the US embargo, but the headline is single-entity with no IR term; drops under the headline-only rule.
+- id: T40
+  headline: Venezolanos demandan a dos aerolíneas por vuelos que los trasladaron a la temida cárcel del CECOT en El Salvador
+  publisher: Alberto News
+  current_label: 1
+  question_for_sam: Private litigation against airlines; the deportation-flights story is IR (US-SV-VE) but the headline has no governments acting. Also low-quality source (Alberto News).
+- id: T43
+  headline: Régimen de Nicaragua eleva a 17 las concesiones mineras a cielo abierto para firmas chinas tras adjudicar dos nuevos lotes
+  publisher: Infobae
+  current_label: 1
+  question_for_sam: Commercial/mining concessions to Chinese firms; state-to-private rather than state-to-state.
+- id: T47
+  headline: 'Brasil: por qué entender a nuestro principal socio comercial es una cuestión de pragmatismo, no de ideología'
+  publisher: Infobae
+  current_label: 2
+  question_for_sam: Opinion piece written from another country's viewpoint; the headline never names that country, so it only reaches Tier 2.
+- id: T50
+  headline: 'Ecuador: piden esclarecer asesinato de fiscal que investigaba ataques de EE.UU. contra pescadores'
+  publisher: teleSUR
+  current_label: 1
+  question_for_sam: Domestic murder of a prosecutor; the US link is the subject of his investigation, not of the government's conduct.
+- id: T54
+  headline: Autoridades internacionales llegan hoy al Perú para la toma de mando de Keiko Fujimori
+  publisher: Infobae
+  current_label: 2
+  question_for_sam: 'Foreign delegations at an inauguration: diplomatic event but names no country; survives only via the ir_term.'
+- id: T56
+  headline: John Barrett reveló que EE UU aportó hasta 386 millones de dólares para asistencia humanitaria tras los terremotos
+  publisher: El Nacional
+  current_label: 1
+  question_for_sam: Needs the `implies_country` rule on John Barrett to be Tier 1; otherwise the headline has no LatAm entity.
+- id: S133
+  headline: Brasil vence a Argentina en la Copa; Milei critica al árbitro
+  current_label: drop
+  question_for_sam: 'BORDERLINE (Sam to decide): fixture result + a leader commenting on the referee; one leader only, no foreign entity => drop'
+- id: S134
+  headline: Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias
+  current_label: drop
+  question_for_sam: 'BORDERLINE (Sam to decide): leader celebrates a qualifier win; leaders of one country only => drop'
+- id: B-extra-1
+  headline: (pattern) Venezolanos demandan a aerolíneas por vuelos al CECOT
+  current_label: 1
+  question_for_sam: 'Private litigation over state deportation flights: IR or domestic/legal? (see T-id for the Alberto News headline)'
+- id: B-extra-2
+  headline: (pattern) Caravana de migrantes avanza hacia la frontera con EEUU
+  current_label: 1
+  question_for_sam: Migrant caravans name several countries but no government action. Keep, demote to Tier 2, or drop?
+- id: B-extra-3
+  headline: (pattern) DEA / EEUU investiga a político mexicano
+  current_label: 1
+  question_for_sam: US prosecution of a foreign politician is IR-relevant when it reaches a government or leads to sanctions/extradition; headline-only rule cannot tell.
+- id: B-extra-4
+  headline: (pattern) Empresas de EEUU/China invierten en [país LatAm]
+  current_label: 1
+  question_for_sam: 'Corporate investment vs state-to-state: should private-sector actors count as ''other country'' when the headline only says ''China''/''EEUU''?'
+- id: B-extra-5
+  headline: (pattern) Region-wide US actions filed under one country (El País 'Estados Unidos lanza una nueva ofensiva… América Latina')
+  current_label: 1
+  question_for_sam: Keep region-wide items via the LATAM regional term?

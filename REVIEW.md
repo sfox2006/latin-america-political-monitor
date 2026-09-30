@@ -1,9 +1,66 @@
 # Review notes
 
-Gating fixes for the specialist review of `main` at `baa7b689` are covered by tests: G1 matching, cross-publisher briefing rows, UTC scheduled Monday versus `MONITOR_TIMEZONE`, and `--scheduled` failure/success state handling.
+Follow-up on the international-relations scope. Office-holders, aliases, and international-relations terms are the verified `entities.yml` (as of 2026-09-30). Sources and caveats are in the leaders verification table supplied with that file. The matcher reads that file; names are not hard-coded.
 
-## Left as-is (non-blocking)
+## Filter
 
-Cuba, Haiti, and Nicaragua stay thin on purpose. Each market keeps the outlets already in `latin_america_monitor/sources.py` (Granma and 14ymedio; Le Nouvelliste and Haiti Libre; La Prensa and Confidencial). No extra titles were added for those markets.
+Headline only, accent-insensitive, Spanish / Portuguese / English / French. Language is guessed from function words so Spanish-press `EU` is the United States and English `EU` is the European Union. `UE` is the European Union in Spanish, Portuguese, and French. Those abbreviations are case-sensitive. A headline that is more than 70% uppercase still matches them.
 
-Paywalled international papers stay in the catalogue as domain entries only. The monitor does not bypass paywalls. GDELT still supplies the publisher name and the original article URL when the index has the story. The Economist, Financial Times, The Times, The Wall Street Journal, and similar titles are unchanged.
+- Tier 1: a Latin American country, leader, or bloc plus a different country, leader, institution, or bloc (a second Latin American country counts). Mercosur, CELAC, the Comunidad Andina, the Alianza del Pacífico, and ALBA are Latin American groups in `latam_blocs`, so "La UE y Mercosur firman acuerdo", "Mercosur rechaza aranceles de Trump", "CELAC y la UE celebran cumbre", and "Comunidad Andina rechaza aranceles de EE.UU." are Tier 1 with no country named. A bloc headline with no country is filed under América Latina. The OAS, IMF, EU, and UN stay foreign institutions, so "Colombia apela al FMI" and "Nicaragua responde a la UE" are Tier 1.
+- Tier 2: exactly one Latin American country or bloc and a strong international-relations term, or two distinct weak terms on a country name. "Mercosur rechaza aranceles" is Tier 2. Weak terms are counted by the matched word, so Spanish `visita` and English `visit` do not double-count. A bloc alone with no strong term is dropped. Mercosur and Mercosul are one group.
+- Dropped: everything else. A weak alias counts only when a non-weak entity from a different group is also present. Puerto Rico plus the United States needs a strong international-relations term.
+
+Law-signing phrases in `law_signing_stoplist` are masked before any entity or term match. `Lula sanciona ley de salario minimo` and `Sheinbaum sanciona reforma judicial` drop. `Trump sanciona a Petro` and `EEUU sanciona a funcionarios venezolanos` stay, because those are not law-signing phrases and they name two sides. Explicit sanction forms (`sanciones`, `sanctions`, `sanções`) remain strong terms. There is no bare `sancion*` wildcard.
+
+Order of operations matches the reference checker. `law_signing_stoplist` is masked first. Entities and international-relations terms are matched second. `sports_rule` then runs on the original headline, after exceptions such as `Partido Comunista`, `Cumbre Sudamericana`, and `Union Sudamericana` are blanked. A headline is a fixture when a hard term hits (`copa`, `amistoso`, `goleada`, Libertadores, Sudamericana, `clasificatoria`, `árbitro`, `estadio`, `selección de`, pageant titles `Miss <country>`), when two distinct soft terms hit, when a versus marker (`derrota a`, `vs`, `vence a`, `gana a`, `empata con`) joins two country names, when a namesake cue (`gol de`, `goles de`, `tecnico`, `DT`, `entrenador`, `delantero`, `volante`, `arquero`, `portero`, `capitan`) sits beside a leader, or when `bare_score` matches. `campeonato` and `championship` are soft, so one of them alone is not a fixture. A cue in `weak_post_cues` after a name still removes that leader and does not start the sports rule by itself. Spanish and Portuguese `partido` are one soft term. `deport(s|ed|ing|ation|ations|ee|ees)?` does not match `deporte`.
+
+A scoreline (`1-1`, `3 a 0`, `2x1`, `2:1` next to a result verb) counts as one soft term. It is skipped for dates, ranges, times, units, and vote or court words, and a digit above 19 is not a score. With no result verb, the score counts only when it sits directly beside a country name. `Senado de Chile aprueba 30-10 tratado con la UE` and `Brasil y Argentina acuerdan plazo de 1-2 semanas` stay. `Brasil 2 Argentina 1` drops through `bare_score` unless a policy word or a vote or court word is present.
+
+`policy_override` runs only when the sports reading is soft (no hard term, no bare score, no namesake cue). Strong words (`acusa`, `espionaje`, `negociacion`, `tratado`, `embajador`, and the rest of the strong list) rescue any soft-only reading. Ambiguous words (`acuerdo`, `frontera`, `denuncia`, and the rest of that list) rescue only a single soft signal, and only when no player or coach cue is in the headline. Hard terms are never rescued. `Venezuela acusa a Colombia de espionaje en el Campeonato` and `Colombia y Venezuela empatan 1-1 en negociacion de frontera` stay. A leader override then keeps two countries' leaders, a Latin American leader plus a foreign entity, or a foreign leader plus any Latin American entity. `override_ir` keeps Mercosur, CELAC, the Comunidad Andina, the IMF, the OAS, and the Casa Blanca. Conmebol or FIFA sanctions do not count.
+
+`fichaje*`, `fichar`, `ficho`, and `traspaso de (jugador|futbolista|delantero|arquero|portero|volante|mediocampista)` are hard terms in `entities.yml`. `Paraguay y Uruguay: acuerdo por fichaje de delantero` drops (S100): `fichaje` is hard, and the ambiguous word `acuerdo` does not rescue a hard term. The matcher adds no sports terms of its own.
+
+Known gap, labelled and dropped: `Argentina y Chile sellan acuerdo de gas en la final de la Copa` (S101) is an in-scope government gas deal, and the hard term `Copa` drops it. Hard terms are not loosened. The matcher is frozen to the reference rules.
+
+Accepted sports behaviour, also frozen: a Copa Mercosur headline that names two countries stays Tier 1, because the countries are the pair and Mercosur is in `override_ir`. A Copa Mercosur headline that names only the bloc, or only clubs, drops. BRICS is still a foreign institution, so BRICS plus the EU ("BRICS y la UE firman un acuerdo") drops: neither side is a Latin American group.
+
+The verified file keeps `Argentina reclama a Brasil por partido de Mercosur` and `Seleccion de Colombia visita la Casa Blanca; Petro y Trump hablan`. The same override keeps `Brasil gana a Argentina; Lula y Milei se cruzan en redes`, `Milei y Lula se enfrentan en la final de la Copa`, `Lula y Trump asisten a un partido durante visita de Estado`, `Copa: Trump y Sheinbaum se reunen antes del Mundial`, and `Partido de Petro rompe con Milei`. `Amistoso Uruguay-Paraguay termina 1-1`, `El entrenador Lula Da Silva dirige a Brasil ante Argentina`, and `Gol de Trump en Argentina vs Chile` drop from the vocabulary itself. `Miss Colombia visita Venezuela` drops.
+
+Two headlines stay dropped and are left for the owner. `Brasil vence a Argentina en la Copa; Milei critica al arbitro` and `Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias` each name one leader beside a fixture, which is not enough for the leader override. Both are labelled drops (S131, S132) and are in the borderline section.
+
+`bbc.com/mundo` is labelled BBC Mundo from the article path. Other `bbc.com` paths stay BBC News. The domain alone cannot tell them apart, and both still share one GDELT query.
+
+249 labelled headlines in `tests/fixtures/test_headlines.yml` are asserted (120 keep, 129 drop) and match the reference checker with no mismatches. `entities.yml` is the Sources file verbatim. The GDELT recall list lives in `gdelt.yml` so that vocabulary file is not edited. The 15 borderline headlines, the two one-leader fixtures, and five pattern notes are in that file and are not gated on their own. They are listed on the pull request so the owner can rule on them.
+
+## Catalogue
+
+145 outlets: 112 Latin American (21 country markets plus pan-regional "Latin America"), 33 international. No duplicate domains.
+
+Reconciled with the verified outlet list: `republica.com` for República GT, `derechadiario.com.ar` for La Derecha Diario, `elheraldo.co` distinct from `elheraldo.hn`. `cnnespanol.cnn.com` is its own entry, so the longest host match labels only that host as CNN Español.
+
+Removed `mppre.gob.ve`. Not added: `albertonews.com`, `reutersconnect.com`. UOL, R7, Voz de América, and MercoPress stay; they were already in and are not duplicates.
+
+Pan-regional desks (Bloomberg Línea, Americas Quarterly, Diálogo Américas, El Cato, PanAm Post) have no home country. They use the same three-clause query as international wires.
+
+## Leaders
+
+`status` and `since_verified` are stored as in `entities.yml`. People marked `UNVERIFIED` stay in that file and are not matched. Todd Blanche is the one excluded name.
+
+`since_verified: false` (the office was confirmed; the start date was not re-checked on 2026-09-30): Claudia Sheinbaum Pardo, Bernardo Arévalo de León, Carlos Ramiro Martínez, Nayib Bukele Ortez, Alexandra Hill Tinoco, José Raúl Mulino Quintero, Javier Eduardo Martínez-Acha Vásquez, Miguel Mario Díaz-Canel Bermúdez, Manuel Marrero Cruz, Bruno Rodríguez Parrilla, Luis Abinader Corona, Alix Didier Fils-Aimé, Jenniffer González Colón, Javier Gerardo Milei, Rodrigo Paz Pereira, Edmand Lara Montaño, Luiz Inácio Lula da Silva, Mauro Luiz Iecker Vieira, Daniel Noboa Azín, Santiago Peña Palacios, Diosdado Cabello.
+
+`status: PARTIAL`: Carlos Ramiro Martínez, Juan Orlando Hernández, Daniel Ortega Saavedra, Rosario Murillo, Valdrack Ludwing Jaentschke Whitaker, Luis Caputo, Gabriel Boric, Félix Plasencia, María Corina Machado, and on the foreign side Pete Hegseth, Scott Bessent, Mauricio Claver-Carone, Johann Wadephul, Sébastien Lecornu, Jean-Noël Barrot, Abbas Araghchi. Todd Blanche is `UNVERIFIED` and excluded from matching.
+
+Bolivia is contested in the source note: Rodrigo Paz is the constitutional president, and Edmand Lara declared himself president in exercise during the September 2026 UN trip. Both are in the file.
+
+## Run time
+
+`build_queries()` produces **494** requests (312 international, 182 Latin American). Encoded length maxes at 240. At 5.25 seconds that is about **43 minutes** before cap-splits. Tests still require at most 750 queries and under 80 minutes at the 5.1 second floor. A busy Monday that splits on the 250-record cap multiplies some of those requests. The 150-minute job has more headroom than the previous 604-query plan.
+
+## Known limits
+
+- Small independents may not be indexed by GDELT. The outlet check saw zero hits for Diálogo Américas, El Cato, El American, and No-Ficción, and left most other new domains untested because the API returned 429. That is a risk for the first real run, not a measured zero. An RSS or sitemap fallback is still a follow-up.
+- The headline filter misses an international-relations story that names neither a country, a leader, nor an international-relations term.
+- `tarifa` / `tarifas` can match a domestic price. French `Chili` is a weak, case-sensitive Chile alias. Georgia is fully masked.
+- `afp.com` has no apex DNS; matching still accepts `www.afp.com`. `republica.com` also serves a US edition; non-IR headlines are dropped by the filter.
+- GDELT leader tokens are only Milei, Lula, Trump, Rubio, and Putin. A bilateral story whose English text never uses a country, an IR term, or one of those surnames can be missed at the index.
+- Paywalled international papers stay as domain entries. The monitor does not bypass paywalls.
