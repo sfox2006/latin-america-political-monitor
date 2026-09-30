@@ -24,11 +24,26 @@ _FRENCH_WORDS = {"le", "la", "les", "des", "du", "est", "pour", "avec", "sur"}
 _PORTUGUESE_WORDS = {"não", "nao", "do", "da", "dos", "das", "para", "com", "uma", "é", "está", "pelo", "pela", "sobre", "brasil", "chanceler", "foi"}
 _SPANISH_WORDS = {"el", "los", "las", "del", "por", "una"}
 _CURRENCY = re.compile(r"(?<!\w)(?:US|U\.S\.)\s?\$|(?<!\w)USD(?!\w)", re.IGNORECASE)
-# Diplomatic words that keep a headline even when a soft or hard sports cue is also present.
-# A later data update that adds the same terms still keeps these.
-_POLICY_OVERRIDE = ("acusa*", "espionaje", "negociacion*", "frontera*", "acuerdo*")
+# Football transfers. Hard terms, so an ambiguous word such as "acuerdo" does not rescue them.
+_TRANSFER_HARD = (
+    "fichaje*",
+    "fichar",
+    "ficho",
+    "traspaso*",
+    "traspasar",
+    "cesion*",
+    "contratacao*",
+    "transferencia*",
+    "transfer fee",
+    "transfer window",
+    "player transfer",
+    "football transfer",
+    "soccer transfer",
+    "signing",
+)
 _PERSON_GAP = r"(?:(?!(?:y|e|and|et|con|vs|contra|com|with|del|de)\b)[\w.'-]+\s+){0,2}"
 _RANGE_BEFORE = re.compile(r"(?:\ba las|\blas|\bat|\bdesde|\bhasta|\bfrom|\bde|\bdel|\bentre|\bbetween)\s*$")
+_BARE_NUMBER = re.compile(r"(?<![\d/.,:-])(\d{1,2})(?![\d/%-]|[.,:]\d)")
 
 
 def entities_path() -> Path:
@@ -122,6 +137,11 @@ class _SportsRule:
     score_verbs: tuple[re.Pattern[str], ...]
     score_block: tuple[re.Pattern[str], ...]
     score_units: tuple[re.Pattern[str], ...]
+    policy_strong: tuple[re.Pattern[str], ...]
+    policy_ambiguous: tuple[re.Pattern[str], ...]
+    cue_patterns: tuple[re.Pattern[str], ...]
+    team_names: tuple[re.Pattern[str], ...]
+    bare_score: bool
 
 
 @dataclass(frozen=True)
@@ -329,14 +349,39 @@ def _build(raw: dict) -> EntityIndex:
     leader_raw = sports_raw.get("leader_override") or {}
     cues = [_fold(cue, lower=True) for cue in _strings(leader_raw.get("sports_person_cues"))]
     score_raw = sports_raw.get("scoreline") or {}
+    policy_raw = sports_raw.get("policy_override") or {}
+    seen_teams: set[str] = set()
+    team_names: list[re.Pattern[str]] = []
+
+    def add_team(alias: str, weak: set[str]) -> None:
+        alias = re.sub(r"\s*\(weak\)$", "", alias)
+        if alias in weak:
+            return
+        key = _fold(alias, lower=True)
+        if key in seen_teams:
+            return
+        seen_teams.add(key)
+        team_names.append(_alias_pattern(alias, case_sensitive=False))
+
+    for entry in raw["countries"]:
+        weak = set(entry.get("weak_aliases") or [])
+        for alias in _strings(entry.get("aliases")) + _strings(entry.get("demonyms")):
+            add_team(alias, weak)
+    for entry in foreign["countries"]:
+        weak = set(entry.get("weak_aliases") or [])
+        for alias in _strings(entry.get("aliases")):
+            add_team(alias, weak)
     sports = _SportsRule(
         enabled=bool(sports_raw.get("enabled")),
         exceptions=compile_terms(sports_raw.get("exceptions")),
         bodies=compile_terms(sports_raw.get("sports_bodies")),
-        hard=compile_terms([term for language in ("es", "pt", "en", "fr", "pageants") for term in hard_lists.get(language, [])]),
+        hard=compile_terms(
+            [term for language in ("es", "pt", "en", "fr", "pageants") for term in hard_lists.get(language, [])]
+            + list(_TRANSFER_HARD)
+        ),
         versus=compile_terms([term for language in ("es", "pt", "en", "fr") for term in versus_lists.get(language, [])]),
         soft=compile_terms([term for language in ("es", "pt", "en", "fr") for term in soft_lists.get(language, [])]),
-        override=compile_terms(list(_strings(sports_raw.get("override_ir"))) + list(_POLICY_OVERRIDE)),
+        override=compile_terms(sports_raw.get("override_ir")),
         body_excludes=frozenset(pattern.pattern for pattern in compile_terms(sports_raw.get("body_excludes"))),
         leader_override=bool(leader_raw.get("enabled")),
         cues=tuple(cues),
@@ -347,6 +392,14 @@ def _build(raw: dict) -> EntityIndex:
         score_verbs=compile_terms(score_raw.get("result_verbs")),
         score_block=compile_terms(score_raw.get("block_terms")),
         score_units=compile_terms(score_raw.get("unit_after")),
+        policy_strong=compile_terms(policy_raw.get("strong")),
+        policy_ambiguous=compile_terms(policy_raw.get("ambiguous")),
+        cue_patterns=tuple(
+            re.compile(r"(?<!\w)" + re.escape(cue).replace(r"\ ", r"\s+") + r"(?!\w)")
+            for cue in cues
+        ),
+        team_names=tuple(team_names),
+        bare_score=bool((sports_raw.get("bare_score") or {}).get("enabled")),
     )
     gdelt = raw["gdelt"]
     return EntityIndex(
@@ -473,32 +526,50 @@ def _scoreline(text: str, index: EntityIndex) -> bool:
     return False
 
 
-def _bare_wire_score(text: str, index: EntityIndex) -> bool:
-    """``Brasil 2 Argentina 1``: a dashless score sitting between two country names."""
+def _policy_hits(text: str, patterns: tuple[re.Pattern[str], ...], body: bool, excludes: frozenset[str]) -> bool:
+    blocked = excludes if body else frozenset()
+    return any(pattern.search(text) and pattern.pattern not in blocked for pattern in patterns)
+
+
+def _bare_score(text: str, index: EntityIndex) -> bool:
+    """``Brasil 2 Argentina 1``: a dashless score between two country names.
+
+    A strong policy word, or an ambiguous one with no player or coach cue, suppresses it.
+    Vote, court, and unit words suppress it too.
+    """
     rule = index.sports
+    if not rule.bare_score:
+        return False
+    body = any(pattern.search(text) for pattern in rule.bodies)
+    if _policy_hits(text, rule.policy_strong, body, rule.body_excludes):
+        return False
     if any(pattern.search(text) for pattern in rule.score_block):
         return False
-    spans: list[tuple[int, int, str]] = []
-    for alias in index.aliases:
-        if alias.kind not in {"name", "demonym"}:
+    cue = any(pattern.search(text) for pattern in rule.cue_patterns)
+    if _policy_hits(text, rule.policy_ambiguous, body, rule.body_excludes) and not cue:
+        return False
+    numbers = [match for match in _BARE_NUMBER.finditer(text) if int(match.group(1)) <= 19]
+    for left, right in zip(numbers, numbers[1:]):
+        before = text[:left.start()].rstrip(" :,-(")
+        middle = text[left.end():right.start()].strip(" ,")
+        window = before[-30:]
+        if not any(found.end() == len(before) for pattern in rule.team_names for found in pattern.finditer(window)):
             continue
-        spans.extend((match.start(), match.end(), alias.group) for match in alias.pattern.finditer(text))
-    for start, end, group in spans:
-        between = re.match(r"\s+(\d{1,2})\s+", text[end:])
-        if not between or int(between.group(1)) > 19:
+        if not any(pattern.fullmatch(middle) for pattern in rule.team_names):
             continue
-        second_at = end + between.end()
-        for other_start, other_end, other_group in spans:
-            if other_start != second_at or other_group == group:
-                continue
-            tail = text[other_end:]
-            last = re.match(r"\s+(\d{1,2})(?!\d)", tail)
-            if not last or int(last.group(1)) > 19:
-                continue
-            following = re.match(r"\s*(\w+)", tail[last.end():])
-            if following and any(pattern.fullmatch(following.group(1)) for pattern in rule.score_units):
-                continue
-            return True
+        following = re.match(r"\s*(\w+)", text[right.end():])
+        if following and any(pattern.fullmatch(following.group(1)) for pattern in rule.score_units):
+            continue
+        return True
+    return False
+
+
+def _policy_rescue(text: str, signals: int, body: bool, rule: _SportsRule) -> bool:
+    """Strong policy words rescue any soft-only sports reading. Ambiguous words rescue one signal and no cue."""
+    if _policy_hits(text, rule.policy_strong, body, rule.body_excludes):
+        return True
+    if signals <= 1 and not any(pattern.search(text) for pattern in rule.cue_patterns):
+        return _policy_hits(text, rule.policy_ambiguous, body, rule.body_excludes)
     return False
 
 
@@ -529,11 +600,10 @@ def _leader_override(headline: str, hits: list[_Hit], index: EntityIndex) -> boo
 
 
 def _sports_drop(headline: str, hits: list[_Hit], index: EntityIndex) -> bool:
-    """Drop a fixture or pageant unless a leader override, a strong IR term, or a diplomatic word applies.
+    """Drop a fixture or pageant unless a soft-only policy rescue, a leader override, or a strong IR term applies.
 
-    Soft terms count once per distinct pattern, so Spanish and Portuguese ``partido``
-    are one term. A scoreline is one soft term and is ignored for dates, ranges, times,
-    units, and votes. A namesake cue before or after a leader starts the sports rule.
+    Soft terms count once per distinct pattern. A scoreline is one soft term. Hard terms,
+    a bare score, and a namesake cue are never rescued by ``policy_override``.
     ``Cumbre Sudamericana`` and the other entries in ``exceptions`` are blanked first.
     """
     rule = index.sports
@@ -548,7 +618,7 @@ def _sports_drop(headline: str, hits: list[_Hit], index: EntityIndex) -> bool:
     scored = _scoreline(text, index)
     if scored:
         soft_hits += 1
-    bare = _bare_wire_score(text, index)
+    bare = _bare_score(text, index)
     folded = _fold(headline, lower=True)
     namesake = rule.namesake_starts and any(
         not hit.weak and hit.kind in {"leader", "foreign_leader"} and _sports_person(folded, hit.surface, rule) in {"pre", "post"}
@@ -556,12 +626,14 @@ def _sports_drop(headline: str, hits: list[_Hit], index: EntityIndex) -> bool:
     )
     name_only = bool(hits) and all(hit.kind in {"name", "demonym"} for hit in hits)
     groups = {hit.group for hit in hits}
-    is_sport = hard or namesake or soft_hits >= 2 or ((versus or scored or bare) and name_only and len(groups) >= 2) or (versus and soft_hits >= 1)
+    is_sport = hard or bare or namesake or soft_hits >= 2 or ((versus or scored) and name_only and len(groups) >= 2) or (versus and soft_hits >= 1)
     if not is_sport:
+        return False
+    body = any(pattern.search(text) for pattern in rule.bodies)
+    if not (hard or bare or namesake) and _policy_rescue(text, soft_hits + (1 if versus else 0), body, rule):
         return False
     if _leader_override(headline, hits, index):
         return False
-    body = any(pattern.search(text) for pattern in rule.bodies)
     for pattern in rule.override:
         if pattern.search(text) and not (body and pattern.pattern in rule.body_excludes):
             return False

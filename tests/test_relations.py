@@ -189,8 +189,17 @@ def test_legislative_signing_sports_and_pageants():
         "El entrenador Lula Da Silva dirige a Brasil ante Argentina",
         "Gol de Trump en Argentina vs Chile",
         "Brasil 2 Argentina 1",
+        "Paraguay y Uruguay: acuerdo por fichaje de delantero",
     ):
         assert classify(headline) is None, headline
     # Owner judgment, currently dropped. Listed on the pull request, not reclassified here.
     assert classify("Brasil vence a Argentina en la Copa; Milei critica al arbitro") is None
     assert classify("Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias") is None
+
+
+@pytest.mark.xfail(
+    reason="Known gap: the hard term Copa drops an in-scope government gas deal. Hard terms stay as they are.",
+    strict=True,
+)
+def test_gas_deal_during_the_copa_is_a_known_gap():
+    assert classify("Argentina y Chile sellan acuerdo de gas en la final de la Copa") is not None
