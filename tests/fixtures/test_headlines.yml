@@ -4,13 +4,13 @@ meta:
   rule: keep only headlines about how a Latin American country/leader deals with another country/leader/institution. Tier 1 = names a LatAm entity AND a different country/leader/institution, or two LatAm
     entities. Tier 2 = one LatAm entity + an IR term. Else drop (domestic).
   source_headline_count: 58
-  total_cases: 152
-  synthetic_cases: 94
+  total_cases: 192
+  synthetic_cases: 134
   counts:
-    should_match_tier1: 68
+    should_match_tier1: 83
     should_match_tier2: 4
-    should_drop: 80
-    borderline: 15
+    should_drop: 105
+    borderline: 17
   note: 'IDs T01.. are real example headlines (all headlines found in Prototipo_Noticias, notipo_, notipo__1; the Medios_Posibles file has none). IDs S01.. are synthetic guards. The `expected` label is
     the rule-based classification; items in `borderline` are the ones Sam should rule on (changing them changes the label). Run: python3 check_entities.py entities.yml test_headlines.yml'
 should_match:
@@ -531,6 +531,111 @@ should_match:
   headline: Xi Jinping invita a la selección de Perú a Pekín; Boluarte agradece
   expected: 1
   reason: 'ADV es: selección de Perú + Xi Jinping (foreign leader) + Peru'
+- id: S98
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula y Trump asisten a un partido durante visita de Estado
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: ''partido'' + leaders of two countries (no namesake cue) => leader_override'
+- id: S99
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa: Trump y Sheinbaum se reúnen antes del Mundial'
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: ''copa'' hard, but Trump + Sheinbaum = two countries'' leaders'
+- id: S100
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido de Petro rompe con Milei
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: ''Partido de Petro'' is not a cue; two leaders'
+- id: S101
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Milei y Lula se enfrentan en la final de la Copa
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: two LatAm leaders (no namesake cue adjacent)'
+- id: S102
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula sanciona ley de aranceles contra EE.UU.
+  expected: 1
+  reason: 'REVIEWER MUST-KEEP: aranceles + EE.UU.; ''sanciona ley'' law-signing stoplist does not hide it'
+- id: S125
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Senado de Chile aprueba 30-10 tratado con la UE
+  expected: 1
+  reason: 'CONTROL: vote count 30-10 (>19 and ''senado''/''aprueba'' block) + tratado + UE'
+- id: S126
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil y China firman acuerdo 2026-2030
+  expected: 1
+  reason: 'CONTROL: year range is not a scoreline; Brasil + China'
+- id: S127
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina y Chile fijan reunión para 2026-09-30 sobre Mercosur
+  expected: 1
+  reason: 'CONTROL: ISO date + Mercosur'
+- id: S128
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil y Argentina acuerdan plazo de 1-2 semanas para negociar tratado
+  expected: 1
+  reason: 'CONTROL: ''1-2 semanas'' has a unit'
+- id: S129
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Senado de Colombia aprobó 5-4 tratado de extradición con EEUU
+  expected: 1
+  reason: 'CONTROL: 5-4 vote + senado + extradición'
+- id: S130
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Corte de Brasil falla 5-4 a favor de acuerdo con EEUU
+  expected: 1
+  reason: 'CONTROL: court vote 5-4 (block term ''corte'')'
+- id: S131
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EEUU y Brasil firman pacto 2-1 sobre aranceles
+  expected: 1
+  reason: 'CONTROL: ''2-1'' without any sports term/verb and IR terms present'
+- id: S132
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Venezuela y Colombia reabren frontera 7:00 am tras acuerdo
+  expected: 1
+  reason: 'CONTROL: clock time is not a scoreline'
+- id: S133
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Petro y Trump hablan 5-10 minutos sobre aranceles
+  expected: 1
+  reason: 'CONTROL: ''5-10 minutos'' has a unit; two leaders'
+- id: S134
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Acuerdo Brasil-Argentina 3-2 en votos del Congreso sobre Mercosur
+  expected: 1
+  reason: 'CONTROL: 3-2 in votes + Congreso + Mercosur'
 should_drop:
 - id: T03
   source_file: Prototipo_Noticias.docx.txt
@@ -1094,6 +1199,183 @@ should_drop:
   headline: 'Campeonato: Lula sanciona ley del deporte'
   expected: drop
   reason: 'ADV pt/es: sports word + law-signing; ''deporte'' must not trigger the deport* IR term (tightened to deport/deportation)'
+- id: S95
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Amistoso Uruguay-Paraguay termina 1-1
+  expected: drop
+  reason: 'TESTER FP: pure football result; ''amistoso'' hard term + scoreline 1-1 (soft)'
+- id: S96
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El entrenador Lula Da Silva dirige a Brasil ante Argentina
+  expected: drop
+  reason: 'TESTER FP: namesake cue ''entrenador'' => Lula is not a leader AND the namesake cue itself starts the sports rule'
+- id: S97
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Gol de Trump en Argentina vs Chile
+  expected: drop
+  reason: 'TESTER FP: ''gol de'' before a name = namesake player (cue), not Trump the leader; also ''gol'' hard'
+- id: S103
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil vence a Argentina en la Copa; Milei critica al árbitro
+  expected: drop
+  reason: 'BORDERLINE (Sam to decide): fixture result + a leader commenting on the referee; one leader only, no foreign entity => drop'
+  borderline: true
+- id: S104
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias
+  expected: drop
+  reason: 'BORDERLINE (Sam to decide): leader celebrates a qualifier win; leaders of one country only => drop'
+  borderline: true
+- id: S105
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Uruguay 2-1 Paraguay
+  expected: drop
+  reason: ADV scoreline directly between two country names, no verb
+- id: S106
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Chile y Perú empatan 0-0 en Santiago
+  expected: drop
+  reason: 'ADV es: result verb ''empatan'' + 0-0'
+- id: S107
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Colombia iguala con Ecuador 1-1 en la clasificatoria
+  expected: drop
+  reason: 'ADV es: ''iguala con'' + clasificatoria'
+- id: S108
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil goleia Bolívia por 5 a 0 pela Libertadores
+  expected: drop
+  reason: 'ADV pt: goleia + ''5 a 0'' + Libertadores'
+- id: S109
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina beat Chile 2-0 in a friendly
+  expected: drop
+  reason: 'ADV en: beat + 2-0 + friendly'
+- id: S110
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mexico and Colombia draw 1-1 in friendly match
+  expected: drop
+  reason: 'ADV en: draw + friendly match'
+- id: S111
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Venezuela empató con Perú en el Estadio Monumental
+  expected: drop
+  reason: 'ADV es: ''empató con'' + estadio'
+- id: S112
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Paraguay vence a Uruguay y se acerca al Mundial
+  expected: drop
+  reason: 'ADV es: vence a + two countries'
+- id: S113
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Perú gana a Bolivia 2x1
+  expected: drop
+  reason: 'ADV es: gana a + 2x1'
+- id: S114
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Técnico de Colombia critica al árbitro tras derrota ante Brasil
+  expected: drop
+  reason: 'ADV es: árbitro (hard) + derrota ante'
+- id: S115
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Sudamericana: Chile vence a Argentina en penales'
+  expected: drop
+  reason: 'ADV es: Sudamericana + vence a'
+- id: S116
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Uruguay-Paraguay: amistoso termina en goleada'
+  expected: drop
+  reason: 'ADV es: amistoso + goleada'
+- id: S117
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Brasil x Argentina: Seleção vence amistoso por 3 a 1'
+  expected: drop
+  reason: 'ADV pt: amistoso + vence + 3 a 1'
+- id: S118
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: England win over Brazil in friendly as Brazil fans boo
+  expected: drop
+  reason: 'ADV en: win over + friendly (non-LatAm counterpart; single LatAm entity anyway)'
+- id: S119
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Campeonato sudamericano: Argentina golea 4-0 a Bolivia'
+  expected: drop
+  reason: 'ADV es: campeonato + golea a + 4-0'
+- id: S120
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: DT Milei dirige a Argentina ante Chile
+  expected: drop
+  reason: 'ADV es: namesake cue DT + Milei; must drop although no hard term'
+- id: S121
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Volante Petro marca para Colombia frente a Ecuador
+  expected: drop
+  reason: 'ADV es: namesake cue volante'
+- id: S122
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Capitán Lula lleva a Brasil ante Uruguay
+  expected: drop
+  reason: 'ADV es: namesake cue capitán'
+- id: S123
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El arquero Trump ataja penal en Chile vs Argentina
+  expected: drop
+  reason: 'ADV es: namesake cue arquero + vs'
+- id: S124
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Goles de Sheinbaum en México ante Brasil
+  expected: drop
+  reason: 'ADV es: ''goles de'' namesake cue'
 borderline:
 - id: T01
   headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'
@@ -1170,6 +1452,14 @@ borderline:
   publisher: El Nacional
   current_label: 1
   question_for_sam: Needs the `implies_country` rule on John Barrett to be Tier 1; otherwise the headline has no LatAm entity.
+- id: S103
+  headline: Brasil vence a Argentina en la Copa; Milei critica al árbitro
+  current_label: drop
+  question_for_sam: 'BORDERLINE (Sam to decide): fixture result + a leader commenting on the referee; one leader only, no foreign entity => drop'
+- id: S104
+  headline: Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias
+  current_label: drop
+  question_for_sam: 'BORDERLINE (Sam to decide): leader celebrates a qualifier win; leaders of one country only => drop'
 - id: B-extra-1
   headline: (pattern) Venezolanos demandan a aerolíneas por vuelos al CECOT
   current_label: 1

@@ -163,29 +163,52 @@ sports_rule:
     - "Partido Laborista"
     - "Partido dos Trabalhadores"
     - "Partido de los Trabajadores"
+    - "Cumbre Sudamericana"            # (2026-09-30) 'sudamericana' is a hard sports term (Copa Sudamericana) - keep diplomatic uses out
+    - "Union Sudamericana"
+    - "Comunidad Sudamericana"
+    - "Integracion Sudamericana"
+    - "Libertadores de America"
   leader_override:
     enabled: true
-    sports_person_cues: ["entrenador", "entrenadora", "dt", "director tecnico", "tecnico", "delantero", "arquero", "portero", "defensa", "mediocampista", "volante", "jugador", "jugadora", "futbolista", "goleador", "capitan", "tenista", "arbitro", "coach", "striker", "goalkeeper", "midfielder", "player", "referee", "treinador", "atacante", "goleiro", "zagueiro", "jogador", "meia"]
+    sports_person_cues: ["entrenador", "entrenadora", "dt", "director tecnico", "tecnico", "delantero", "arquero", "portero", "mediocampista", "volante", "jugador", "jugadora", "futbolista", "goleador", "capitan", "tenista", "arbitro", "coach", "striker", "goalkeeper", "midfielder", "player", "referee", "treinador", "atacante", "goleiro", "zagueiro", "jogador", "meia",
+                          "gol de", "goles de", "golazo de", "doblete de", "hat-trick de", "tripleta de", "gol do", "gols de", "gols do", "goal by", "goals by", "goal from", "goals from", "hat-trick by", "atleta", "arquera", "portera", "capitana", "tecnica", "directora tecnica", "captain", "winger", "capitao", "treinadora", "lateral derecho", "lateral izquierdo", "centrodelantero", "extremo derecho", "extremo izquierdo", "defensor central", "el tecnico", "la tecnica"]
+    weak_post_cues: ["jugador", "jugadora", "player", "capitan", "capitana", "captain", "arbitro", "referee", "atleta", "tecnico", "tecnica", "coach", "campeon", "jogador", "capitao"]   # ambiguous when AFTER the name ("Petro, jugador clave"): still not a leader, but do NOT start the sports rule
+  # a sports_person_cue directly before/after a leader-named alias (<=2 words, no connector) is ALSO a sports signal: the sports rule starts even
+  # with no hard term ("El entrenador Lula Da Silva dirige a Brasil ante Argentina"); see sports_drop() `namesake`.
+    namesake_starts_sports: true
+  # scoreline (soft term): "1-1", "3-0", "2:1", "3 a 0", "2x1".  Counted as ONE soft term, and (like a versus verb) makes a 2-country-name headline sports.
+  # Only valid when (a) a result verb is in the headline OR the score sits directly beside a country/team name ("Uruguay 2-1 Paraguay") and
+  # (b) it is not a date/range/time/vote count: no digit/"-"/"/"/"."/"," glued to it, not followed by a unit (semanas, meses, votos, %...),
+  # and no vote/legislative/court word in the headline (senado, votos, corte, congreso, ...).  "2026-09-30", "2026-2030", "1-2 semanas",
+  # "Senado de Chile aprueba 30-10 tratado con la UE" are NOT scorelines.
+  scoreline:
+    enabled: true
+    pattern: '(?<![\d/.,:-])(\d{1,2})\s?([-–x:]|a|to)\s?(\d{1,2})(?![\d/.,:%-])'
+    result_verbs: ["termina*", "empata*", "empate", "gana*", "gano", "vence*", "vencio", "golea*", "goleo", "cae", "cayo", "pierde*", "perdio", "derrota*", "derroto", "iguala*", "igualo", "finaliza*", "cierra con", "perde", "perdeu", "ganha*", "ganhou", "goleia", "venceu", "empatou", "ends", "end", "draw", "draws", "drew", "beat", "beats", "wins", "won", "lose", "loses", "lost", "defeat", "defeats", "edge", "edges"]
+    unit_after: ["de", "del", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "setiembre", "octubre", "noviembre", "diciembre", "janeiro", "fevereiro", "marco", "maio", "junho", "julho", "setembro", "outubro", "novembro", "dezembro", "january", "february", "march", "april", "june", "july", "august", "september", "october", "november", "december", "semana*", "mes", "meses", "dia", "dias", "ano*", "hora*", "horas", "minuto*", "segundo*", "voto*", "puntos porcentuales", "mil", "millones", "millon", "bilhoes", "milhoes", "billion", "million", "week*", "month*", "day*", "year*", "hour*", "minute*", "semaine*", "mois", "jour*", "anos", "kg", "km", "%"]
+    block_terms: ["voto*", "votacion*", "votar", "votos", "senado", "senador*", "senate", "senator*", "camara", "congreso", "parlamento", "parliament", "diputad*", "corte", "tribunal", "suprema", "court", "justices", "jueces", "ministros del", "stf", "plebiscito", "referendo", "referendum", "escrutinio", "asamblea", "vote*", "poll*", "encuesta*", "escanos", "bancas", "cadeiras", "seats", "aprob*", "aprueb*", "rechaz*", "ratific*", "tasa*", "inflacion", "rate", "pib", "gdp"]
+    time_before: ["a las", "las", "at", "as"]
   sports_bodies: ["fifa", "conmebol", "uefa", "concacaf", "comite olimpico", "olympic committee", "atp", "wta", "nba", "mlb", "cbf", "afa"]
   hard:
     es: ["copa", "copas", "eliminatoria*", "mundial (2022|2026|2030|2034|2038)", "mundial de (futbol|clubes|rugby|atletismo|basquet|beisbol|voleibol|tenis)", "mundial sub", "mundialista*",
          "goles", "goleada", "golazo", "gol", "futbol", "futbolist*", "futsal", "campeonato*", "campeon de", "torneo*", "olimpic*", "juegos olimpicos", "panamericanos", "tenis", "tenista*", "basquet*", "basketball", "baloncesto", "beisbol", "beisbolista*", "voleibol", "rugby", "formula 1", "ciclismo",
          "seleccion (nacional|sub|argentina|brasilena|chilena|colombiana|mexicana|uruguaya|paraguaya|peruana|ecuatoriana|venezolana|boliviana|cubana|hondurena|costarricense|panamena|de futbol|de basquet)",
          "seleccion de (argentina|brasil|chile|colombia|mexico|uruguay|paraguay|peru|ecuador|venezuela|bolivia|cuba|honduras|costa rica|panama|guatemala|el salvador|nicaragua|haiti)",
-         "semifinal*", "cuartos de final", "octavos de final", "la final", "final de la (copa|liga|eliminatoria|champions|libertadores|sudamericana)", "libertadores", "sudamericana", "champions", "liga de campeones", "fifa", "conmebol", "uefa", "concacaf", "atp", "wta", "nba", "mlb", "afa", "cbf", "arbitro*", "clasificatoria*", "tabla de posiciones"]
-    pt: ["copa", "eliminatorias", "mundial (2022|2026|2030|2034|2038)", "gols", "gol", "golaco", "futebol", "campeonato*", "torneio*", "olimpic*", "tenis", "basquete", "selecao", "semifinal*", "libertadores", "fifa", "conmebol", "cbf", "arbitro*", "brasileirao"]
-    en: ["world cup", "copa america", "football match", "soccer", "qualifier*", "championship*", "tournament*", "olympic*", "tennis", "basketball", "baseball", "atp", "fifa", "conmebol", "uefa", "concacaf", "nba", "mlb", "semifinal*", "copa libertadores", "goals", "rugby"]
+         "semifinal*", "cuartos de final", "octavos de final", "la final", "final de la (copa|liga|eliminatoria|champions|libertadores|sudamericana)", "libertadores", "sudamericana", "champions", "liga de campeones", "fifa", "conmebol", "uefa", "concacaf", "atp", "wta", "nba", "mlb", "afa", "cbf", "arbitro*", "clasificatoria*", "tabla de posiciones",
+         "amistoso*", "copa sudamericana", "copa libertadores", "eliminatorias sudamericanas", "campeonato*", "goleada*", "estadio de futbol", "partido amistoso", "amistoso internacional", "hinchada*", "barra brava*", "tanda de penales", "pitazo final", "tiempo (extra|suplementario)", "empato (a|en|con) (cero|un|dos|tres)", "goles? en contra"]
+    pt: ["copa", "eliminatorias", "mundial (2022|2026|2030|2034|2038)", "gols", "gol", "golaco", "futebol", "campeonato*", "torneio*", "olimpic*", "tenis", "basquete", "selecao", "semifinal*", "libertadores", "fifa", "conmebol", "cbf", "arbitro*", "brasileirao", "amistoso*", "goleada*", "libertadores", "sul-americana", "sulamericana", "eliminatorias sul-americanas", "partida amistosa", "estadio de futebol", "torcida organizada", "tempo extra", "prorrogacao", "disputa de penaltis", "apito final"]
+    en: ["world cup", "copa america", "football match", "soccer", "qualifier*", "championship*", "tournament*", "olympic*", "tennis", "basketball", "baseball", "atp", "fifa", "conmebol", "uefa", "concacaf", "nba", "mlb", "semifinal*", "copa libertadores", "goals", "rugby", "friendly (match|game)", "international friendly", "pre-season friendly", "copa sudamericana", "extra time", "penalty shootout", "hat-trick", "hat trick", "full-time", "full time", "goalless", "scoreless", "referee*", "matchday", "stoppage time", "clean sheet"]
     pageants: ["miss (universo|universe|mundo|world|argentina|bolivia|brasil|brazil|chile|colombia|costa rica|cuba|ecuador|el salvador|guatemala|honduras|mexico|nicaragua|panama|paraguay|peru|puerto rico|republica dominicana|uruguay|venezuela)", "certamen de belleza", "reina de belleza", "concurso de belleza"]
     fr: ["coupe du monde", "football", "tournoi*", "championnat*", "olympique*", "tennis", "basketball", "eliminatoires", "fifa", "conmebol", "uefa", "buts", "finale de la (coupe|ligue)"]
   versus:                             # head-to-head verbs/markers: one hit + 2 country-NAME groups => sports (rule c)
-    es: ["vs", "versus", "derrota a", "derroto a", "vence a", "vencio a", "gana a", "gano a", "supera a", "golea a", "le gana a", "cae ante", "cayo ante", "empata con"]
-    pt: ["vs", "derrota a", "vence a", "venceu", "ganha de", "goleia", "cai diante de", "empata com"]
-    en: ["vs", "versus", "beats", "defeats"]
+    es: ["vs", "versus", "derrota a", "derroto a", "vence a", "vencio a", "gana a", "gano a", "supera a", "golea a", "le gana a", "cae ante", "cayo ante", "empata con", "empato con", "empatan con", "iguala con", "igualo con", "igualaron con", "empataron con", "golean a", "goleo a", "pierde ante", "perdio ante", "se impone a", "se impuso a", "triunfo sobre", "victoria sobre", "derrota ante", "derrota frente a", "gano a", "ganan a", "vencen a", "vencieron a"]
+    pt: ["vs", "derrota a", "vence a", "venceu", "ganha de", "goleia", "cai diante de", "empata com", "empatou com", "venceu a", "vence o", "bate o", "bateu o", "goleou", "perde para", "perdeu para", "ganha do", "ganhou do"]
+    en: ["vs", "versus", "beats", "defeats", "beat", "win over", "wins over", "won over", "draw with", "draws with", "drew with", "draw against", "draws against", "tie with", "ties with", "thrash", "thrashes", "lose to", "loses to", "lost to"]
     fr: ["vs", "bat", "battent", "s'impose face a"]
   soft:                               # ambiguous alone (politics, parties, elections); 2 distinct soft terms => sports (rule b)
-    es: ["partido", "partidos", "liga", "final de", "final", "duelo", "clasico", "encuentro", "jornada", "marcador", "entrenador", "estadio", "hinchas", "afición"]
-    pt: ["jogo", "jogos", "partida", "partido", "liga", "final", "duelo", "classico", "estadio", "torcida", "tecnico"]
-    en: ["match", "matches", "league", "final", "clash", "game", "stadium", "coach", "fans", "score"]
+    es: ["partido", "partidos", "liga", "final de", "final", "duelo", "clasico", "encuentro", "jornada", "marcador", "entrenador", "estadio", "hinchas", "afición", "empate", "gol de", "camiseta", "vestuario", "convocados", "convocatoria"]
+    pt: ["jogo", "jogos", "partida", "partido", "liga", "final", "duelo", "classico", "estadio", "torcida", "tecnico", "empate", "placar", "rodada", "convocados", "convocacao"]
+    en: ["match", "matches", "league", "final", "clash", "game", "stadium", "coach", "fans", "score", "draw", "kickoff", "kick-off", "lineup", "squad", "friendly"]
     fr: ["match", "ligue", "finale", "stade", "entraineur"]
   override_ir:                        # strong IR terms; if any hits, the sports headline is kept for normal tiering
     - "sanciones"

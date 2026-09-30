@@ -178,12 +178,17 @@ def test_legislative_signing_sports_and_pageants():
         "Lula y Trump asisten a un partido durante visita de Estado",
         "Copa: Trump y Sheinbaum se reunen antes del Mundial",
         "Partido de Petro rompe con Milei",
+        "Venezuela acusa a Colombia de espionaje en el Campeonato",
+        "Colombia y Venezuela empatan 1-1 en negociacion de frontera",
+        "Cumbre Sudamericana: Brasil y Argentina firman un comunicado",
+        "Union Sudamericana respalda el dialogo entre Brasil y Argentina",
     ):
         assert classify(headline) is not None, headline
     for headline in (
         "Amistoso Uruguay-Paraguay termina 1-1",
         "El entrenador Lula Da Silva dirige a Brasil ante Argentina",
         "Gol de Trump en Argentina vs Chile",
+        "Brasil 2 Argentina 1",
     ):
         assert classify(headline) is None, headline
     # Owner judgment, currently dropped. Listed on the pull request, not reclassified here.
