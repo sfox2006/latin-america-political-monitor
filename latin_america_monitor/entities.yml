@@ -37,6 +37,7 @@ meta:
   headline_only: true
   all_caps_headline_fix: true   # if >70% of letters are uppercase, title-case the headline BEFORE case-sensitive checks
   puerto_rico_us_rule: require_ir_term   # PR + US => Tier 2 only if a strong ir_term is present
+  latam_blocs_note: "2026-09-30: Mercosur, CELAC, CAN, Alianza del Pacífico, ALBA-TCP moved from foreign_entities to `latam_blocs` (LatAm groups; same schema)."
   case_sensitive_note: >
     Spanish/Portuguese press uses "EU" for Estados Unidos (Proceso, El Universal) while English
     "EU" is the European Union; "UE" is Unión Europea. Handled in foreign_entities via lang_only.
@@ -1253,16 +1254,11 @@ foreign_entities:
     - {id: ICC, name: "Corte Penal Internacional", aliases: {es: ["CPI", "Corte Penal Internacional"], pt: ["TPI", "Tribunal Penal Internacional"], en: ["ICC", "International Criminal Court"], fr: ["CPI", "Cour pénale internationale"]}, case_sensitive_aliases: ["CPI", "ICC", "TPI"], weak_aliases: ["CPI"], notes: "'CPI' also = consumer price index and Brazil's CPI (Comissão Parlamentar de Inquérito, domestic): weak unless 'Corte Penal Internacional' is spelled out. Venezuela announced exit from the CPI (MPPRE headline)."}
     - {id: ICJ, name: "Corte Internacional de Justicia", aliases: {es: ["CIJ", "Corte Internacional de Justicia"], pt: ["CIJ", "Corte Internacional de Justiça"], en: ["ICJ", "International Court of Justice"], fr: ["CIJ", "Cour internationale de justice"]}, case_sensitive_aliases: ["CIJ", "ICJ"]}
     - {id: IACHR, name: "CIDH / Corte IDH", aliases: {es: ["CIDH", "Corte IDH", "Corte Interamericana de Derechos Humanos", "Comisión Interamericana de Derechos Humanos"], pt: ["CIDH", "Corte IDH"], en: ["IACHR", "Inter-American Commission on Human Rights"], fr: ["CIDH"]}, case_sensitive_aliases: ["CIDH", "IACHR"]}
-    - {id: CELAC, name: "CELAC", aliases: {es: ["CELAC", "Comunidad de Estados Latinoamericanos y Caribeños"], pt: ["CELAC"], en: ["CELAC"], fr: ["CELAC"]}, case_sensitive_aliases: ["CELAC"]}
-    - {id: MERCOSUR, name: "Mercosur", aliases: {es: ["Mercosur", "Mercado Común del Sur"], pt: ["Mercosul", "Mercosur"], en: ["Mercosur"], fr: ["Mercosur"]}, notes: "EU-Mercosur agreement and quota disputes (Paraguay/Uruguay, Sept 2026) are live."}
-    - {id: CAN, name: "Comunidad Andina", aliases: {es: ["Comunidad Andina", "CAN"], pt: ["Comunidade Andina"], en: ["Andean Community"], fr: ["Communauté andine"]}, case_sensitive_aliases: ["CAN"], weak_aliases: ["CAN"], lang_only_aliases: {"CAN": [es]}, notes: "'CAN' Spanish-only, case-sensitive and weak (English modal 'can', ALL-CAPS headlines). Prefer 'Comunidad Andina'."}
     - {id: BRICS, name: "BRICS", aliases: {es: ["BRICS"], pt: ["BRICS"], en: ["BRICS"], fr: ["BRICS"]}, case_sensitive_aliases: ["BRICS"]}
-    - {id: PACIFIC_ALLIANCE, name: "Alianza del Pacífico", aliases: {es: ["Alianza del Pacífico"], pt: ["Aliança do Pacífico"], en: ["Pacific Alliance"], fr: ["Alliance du Pacifique"]}}
-    - {id: ALBA, name: "ALBA-TCP", aliases: {es: ["ALBA-TCP", "Alianza Bolivariana", "ALBA"], en: ["ALBA"]}, case_sensitive_aliases: ["ALBA", "ALBA-TCP"], weak_aliases: ["ALBA"]}
     - {id: SICA, name: "SICA", aliases: {es: ["SICA", "Sistema de la Integración Centroamericana"]}, case_sensitive_aliases: ["SICA"]}
     - {id: CARICOM, name: "CARICOM", aliases: {es: ["CARICOM", "Caricom", "Comunidad del Caribe"], en: ["CARICOM", "Caribbean Community"], fr: ["CARICOM"]}}
     - {id: SHIELD, group: US, name: "Escudo de las Américas / Shield of the Americas", aliases: {es: ["Escudo de las Américas"], pt: ["Escudo das Américas"], en: ["Shield of the Americas"], fr: ["Bouclier des Amériques"]}, notes: "US-led hemispheric security initiative (2026). Chile (Kast) and Peru joined; Costa Rica's canciller was fired 2026-09-24 over a related Trump meeting. Resolves to group US."}
-    - {id: SUMMITS, name: "Cumbres hemisféricas", aliases: {es: ["Cumbre de las Américas", "Cumbre Iberoamericana", "Cumbre Celac-UE"], pt: ["Cúpula das Américas", "Cúpula do Mercosul", "Cúpula do BRICS"], en: ["Summit of the Americas", "Ibero-American Summit"], fr: ["Sommet des Amériques"]}}
+    - {id: SUMMITS, name: "Cumbres hemisféricas", aliases: {es: ["Cumbre de las Américas", "Cumbre Iberoamericana", "Cumbre Celac-UE"], pt: ["Cúpula das Américas", "Cúpula do BRICS"], en: ["Summit of the Americas", "Ibero-American Summit"], fr: ["Sommet des Amériques"]}}
     - {id: G20_G7, name: "G20 / G7", aliases: {es: ["G20", "G7"], pt: ["G20", "G7"], en: ["G20", "G7"], fr: ["G20", "G7"]}, case_sensitive_aliases: ["G20", "G7"]}
     - {id: WTO, name: "OMC", aliases: {es: ["OMC", "Organización Mundial del Comercio"], pt: ["OMC", "Organização Mundial do Comércio"], en: ["WTO", "World Trade Organization"], fr: ["OMC", "Organisation mondiale du commerce"]}, case_sensitive_aliases: ["OMC", "WTO"]}
     - {id: NATO, name: "OTAN", aliases: {es: ["OTAN"], pt: ["OTAN"], en: ["NATO"], fr: ["OTAN"]}, case_sensitive_aliases: ["OTAN", "NATO"]}
@@ -1274,6 +1270,22 @@ foreign_entities:
     - {id: US_AGENCIES, group: US, name: "Agencias federales de EEUU", aliases: {es: ["CIA", "FBI", "ICE", "OFAC", "SDNY", "Patrulla Fronteriza", "Departamento del Tesoro", "Corte Suprema de EEUU", "Guardia Costera de EEUU"], pt: ["CIA", "FBI", "ICE", "OFAC"], en: ["CIA", "FBI", "ICE", "OFAC", "Border Patrol", "Treasury Department", "Homeland Security", "DHS"], fr: ["CIA", "FBI", "ICE", "OFAC"]}, case_sensitive_aliases: ["CIA", "FBI", "ICE", "OFAC", "SDNY", "DHS"], weak_aliases: ["Patrulla Fronteriza", "Border Patrol"], notes: "'ICE'/'CIA' case-sensitive (English 'ice', Portuguese 'cia')."}
     - {id: INTERPOL, name: "Interpol / Europol", aliases: {es: ["Interpol", "Europol"], en: ["Interpol", "Europol"]}}
     - {id: IAEA, name: "OIEA", aliases: {es: ["OIEA", "Organismo Internacional de Energía Atómica"], en: ["IAEA"]}, case_sensitive_aliases: ["OIEA", "IAEA"]}
+
+# =============================================================================
+# 2b. LATIN AMERICAN BLOCS (added 2026-09-30) – regional organisations that are LATIN AMERICAN entities, not foreign ones.
+# Same schema as foreign_entities.institutions (aliases by language, case_sensitive_aliases, weak_aliases, lang_only_aliases, notes).
+# Each bloc's `group` (default = id) is added to the LatAm group set (check_entities.py: s.latam), so a bloc + a foreign country/leader/
+# institution (EU, US, China, Russia, Trump...) is Tier 1 even with no country named ("Mercosur rechaza aranceles de Trump"), two different
+# blocs (or a bloc + a country/leader) are Tier 1 under the "two LatAm groups" rule, and a bloc alone + a strong ir_term is Tier 2.
+# A bloc alone with no strong ir_term is dropped.  Mercosur/Mercosul are ONE group (no double count).  Strong IR-institution wording for the
+# sports rule stays in sports_rule.override_ir (mercosur, mercosul, celac, comunidad andina, andean community, alba-tcp, alianza del pacifico).
+# =============================================================================
+latam_blocs:
+  - {id: CELAC, name: "CELAC", aliases: {es: ["CELAC", "Comunidad de Estados Latinoamericanos y Caribeños"], pt: ["CELAC"], en: ["CELAC"], fr: ["CELAC"]}, case_sensitive_aliases: ["CELAC"]}
+  - {id: MERCOSUR, name: "Mercosur", aliases: {es: ["Mercosur", "Mercado Común del Sur"], pt: ["Mercosul", "Mercosur"], en: ["Mercosur"], fr: ["Mercosur"]}, notes: "EU-Mercosur agreement and quota disputes (Paraguay/Uruguay, Sept 2026) are live."}
+  - {id: CAN, name: "Comunidad Andina", aliases: {es: ["Comunidad Andina", "CAN"], pt: ["Comunidade Andina"], en: ["Andean Community"], fr: ["Communauté andine"]}, case_sensitive_aliases: ["CAN"], weak_aliases: ["CAN"], lang_only_aliases: {"CAN": [es]}, notes: "'CAN' Spanish-only, case-sensitive and weak (English modal 'can', ALL-CAPS headlines). Prefer 'Comunidad Andina'."}
+  - {id: PACIFIC_ALLIANCE, name: "Alianza del Pacífico", aliases: {es: ["Alianza del Pacífico"], pt: ["Aliança do Pacífico"], en: ["Pacific Alliance"], fr: ["Alliance du Pacifique"]}}
+  - {id: ALBA, name: "ALBA-TCP", aliases: {es: ["ALBA-TCP", "Alianza Bolivariana", "ALBA"], en: ["ALBA"]}, case_sensitive_aliases: ["ALBA", "ALBA-TCP"], weak_aliases: ["ALBA"]}
 
 # Names that look like entities but are SOURCE/publisher attributions; masked before matching.
 out_of_entity_names:
@@ -1628,11 +1640,11 @@ ir_terms:
 # =============================================================================
 tier_rules:
   group_resolution: >
-    Each matched alias resolves to (group, kind). Group = LatAm country code (20 + PR), 'LATAM' (regional term),
+    Each matched alias resolves to (group, kind). Group = LatAm country code (20 + PR) or a `latam_blocs` id, 'LATAM' (regional term),
     or a foreign group id (US, CN, EU, UK, ... or an institution id). A leader/metonym/demonym resolves to its
     country's group. Institutions with `group: US` (SOUTHCOM, DEA, USAID, US_AGENCIES, SHIELD) resolve to US.
     `implies_country` (e.g. John Barrett -> VE), `disputes.implies` and `USMCA.implies` add extra groups.
-  tier_1: "at least one LatAm country group AND at least one OTHER group (foreign country/leader/institution, or a second LatAm country). LATAM counts as a LatAm group only together with a foreign group."
+  tier_1: "at least one LatAm country group AND at least one OTHER group (foreign country/leader/institution, or a second LatAm country). LATAM counts as a LatAm group only together with a foreign group. `latam_blocs` (Mercosur, CELAC, CAN, Pacific Alliance, ALBA) are LatAm groups."
   tier_2: "exactly one LatAm country group and no other group, plus >=1 strong ir_term (or >=2 distinct weak terms when the LatAm match is a country NAME)."
   drop: "everything else (single LatAm group with no strong IR term; foreign-only headlines; no entities)."
   weak_entities: "A weak alias only counts if at least one non-weak entity of a DIFFERENT group is also present."

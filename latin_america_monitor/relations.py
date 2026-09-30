@@ -278,8 +278,11 @@ def _build(raw: dict) -> EntityIndex:
         for entry in foreign["institutions"]
         if (entry.get("group") or entry["id"]) not in country_ids
     }
-    for entry in foreign["countries"] + foreign["institutions"]:
-        group = entry.get("group") or entry["id"]
+    blocs = list(raw.get("latam_blocs") or [])
+    for entry in blocs:
+        latam.add(entry.get("group", entry["id"]))
+    for entry in foreign["countries"] + foreign["institutions"] + blocs:
+        group = entry.get("group", entry["id"])
         for phrase in entry.get("stoplist_phrases") or []:
             add_mask(phrase)
         weak = set(entry.get("weak_aliases") or [])
@@ -698,9 +701,9 @@ def classify(title: str) -> Classification | None:
             tier = 2
     if tier is None or _sports_drop(title, hits, index):
         return None
-    latam_hits = [hit for hit in admitted if hit.group in index.latam]
-    if latam_hits:
-        country = index.country_by_id[min(latam_hits, key=lambda hit: (hit.start, hit.group)).group]
+    country_hits = [hit for hit in admitted if hit.group in index.country_by_id]
+    if country_hits:
+        country = index.country_by_id[min(country_hits, key=lambda hit: (hit.start, hit.group)).group]
         return Classification(
             tier=tier,
             region_id=country.region_display,

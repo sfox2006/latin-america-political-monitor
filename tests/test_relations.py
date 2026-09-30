@@ -128,6 +128,18 @@ def test_leaders_are_loaded_from_entities_yml_not_hard_coded():
     assert all(leader.status != "UNVERIFIED" for leader in leaders.values())
 
 
+def test_latam_blocs_are_read_or_bloc_headlines_drop():
+    """Fails if latam_blocs is missing from entities.yml or the loader skips it."""
+    index = load_entities()
+    missing = {"MERCOSUR", "CELAC", "CAN", "PACIFIC_ALLIANCE", "ALBA"} - index.latam
+    assert not missing, f"latam_blocs not loaded: {sorted(missing)}"
+    result = classify("Mercosur rechaza aranceles de Trump")
+    assert result is not None and result.tier == 1
+    assert classify("La UE y Mercosur firman acuerdo") is not None
+    assert classify("CELAC y la UE celebran cumbre") is not None
+    assert classify("Comunidad Andina rechaza aranceles de EE.UU.") is not None
+
+
 def test_pan_regional_headline_is_kept_without_a_specific_country():
     result = classify("Estados Unidos lanza una ofensiva contra políticos de América Latina")
     assert result is not None and result.tier == 1

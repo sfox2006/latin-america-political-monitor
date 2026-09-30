@@ -4,12 +4,12 @@ meta:
   rule: keep only headlines about how a Latin American country/leader deals with another country/leader/institution. Tier 1 = names a LatAm entity AND a different country/leader/institution, or two LatAm
     entities. Tier 2 = one LatAm entity + an IR term. Else drop (domestic).
   source_headline_count: 58
-  total_cases: 222
-  synthetic_cases: 164
+  total_cases: 249
+  synthetic_cases: 191
   counts:
-    should_match_tier1: 99
-    should_match_tier2: 4
-    should_drop: 119
+    should_match_tier1: 115
+    should_match_tier2: 5
+    should_drop: 129
     borderline: 17
   note: 'IDs T01.. are real example headlines (all headlines found in Prototipo_Noticias, notipo_, notipo__1; the Medios_Posibles file has none). IDs S01.. are synthetic guards. The `expected` label is
     the rule-based classification; items in `borderline` are the ones Sam should rule on (changing them changes the label). Run: python3 check_entities.py entities.yml test_headlines.yml'
@@ -748,6 +748,125 @@ should_match:
   headline: Acuerdo Brasil-Argentina 3-2 en votos del Congreso sobre Mercosur
   expected: 1
   reason: 'CONTROL: 3-2 in votes + Congreso + Mercosur'
+- id: S165
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: La UE y Mercosur firman acuerdo
+  expected: 1
+  reason: 'BLOC (Reviewer/Tester FN): Mercosur (LatAm bloc) + UE, no country named'
+- id: S166
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EU y Mercosur cierran tratado de libre comercio
+  expected: 1
+  reason: 'BLOC: Spanish-press ''EU'' = Estados Unidos (lang_only es) + Mercosur'
+- id: S167
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur rechaza aranceles de Trump
+  expected: 1
+  reason: 'BLOC: Mercosur + Trump'
+- id: S168
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: CELAC y la UE celebran cumbre
+  expected: 1
+  reason: 'BLOC: CELAC + UE'
+- id: S169
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Comunidad Andina rechaza aranceles de EE.UU.
+  expected: 1
+  reason: 'BLOC: Comunidad Andina + EE.UU.'
+- id: S170
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur y China negocian acuerdo comercial
+  expected: 1
+  reason: 'BLOC: Mercosur + China'
+- id: S171
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Alianza del Pacífico y la UE firman memorando
+  expected: 1
+  reason: 'BLOC: Alianza del Pacífico + UE'
+- id: S172
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Milei y Lula chocan en la cumbre del Mercosur
+  expected: 1
+  reason: Two LatAm leaders (AR + BR) + bloc; bloc must not break it
+- id: S173
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosul e a UE assinam acordo comercial
+  expected: 1
+  reason: 'BLOC pt: Mercosul alias + UE'
+- id: S174
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Le Mercosur et l'UE signent un accord
+  expected: 1
+  reason: 'BLOC fr: Mercosur + UE'
+- id: S175
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: EU and Mercosur sign trade deal
+  expected: 1
+  reason: 'BLOC en: English ''EU'' = European Union + Mercosur'
+- id: S176
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Pacific Alliance and China launch talks
+  expected: 1
+  reason: 'BLOC en: Pacific Alliance + China'
+- id: S177
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: ALBA-TCP condena sanciones de EEUU
+  expected: 1
+  reason: 'BLOC: ALBA-TCP (case-sensitive) + EEUU'
+- id: S178
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: CAN y la UE firman acuerdo comercial
+  expected: 1
+  reason: 'BLOC: weak, es-only, case-sensitive ''CAN'' admitted by a non-weak different group (UE)'
+- id: S179
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur y CELAC firman declaración conjunta
+  expected: 1
+  reason: Two different LatAm blocs = 'two LatAm groups' rule (Tier 1 per tier_rules)
+- id: S180
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur sanciona a Venezuela
+  expected: 1
+  reason: BLOC + LatAm country (two LatAm groups)
+- id: S181
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur rechaza aranceles
+  expected: 2
+  reason: BLOC alone + strong ir_term (aranceles) = Tier 2
 should_drop:
 - id: T03
   source_file: Prototipo_Noticias.docx.txt
@@ -1586,6 +1705,76 @@ should_drop:
   headline: Goles de Sheinbaum en México ante Brasil
   expected: drop
   reason: 'ADV es: ''goles de'' namesake cue'
+- id: S182
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur aprueba presupuesto interno
+  expected: drop
+  reason: BLOC alone, no foreign actor, no strong ir_term => domestic
+- id: S183
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur anuncia reunión de ministros de economía
+  expected: drop
+  reason: BLOC alone, no strong ir_term
+- id: S184
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Mercosur y Mercosul
+  expected: drop
+  reason: 'Same bloc twice (es/pt spelling) is ONE group: no double count, no Tier 1'
+- id: S185
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El Mercosur (Mercosul) celebra aniversario
+  expected: drop
+  reason: 'Same bloc in two spellings: one group, no ir_term'
+- id: S186
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Cumbre Sudamericana de fútbol
+  expected: drop
+  reason: Sports summit; no entity at all
+- id: S187
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Final de la Copa Mercosur: Boca vence a River'
+  expected: drop
+  reason: 'Copa Mercosur football: bloc alone, no ir_term, hard sports term'
+- id: S188
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa Mercosur: Flamengo y Peñarol empatan 1-1'
+  expected: drop
+  reason: 'Copa Mercosur football: bloc alone, scoreline + hard term'
+- id: S189
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa Mercosur: Boca vence a River en penales'
+  expected: drop
+  reason: 'Copa Mercosur football: bloc alone'
+- id: S190
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump says tariffs can rise next month
+  expected: drop
+  reason: English modal 'can' must not match weak case-sensitive CAN; no LatAm entity
+- id: S191
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Festival de Alba premia a actriz española
+  expected: drop
+  reason: Mixed-case 'Alba' (given name) must not match case-sensitive ALBA
 borderline:
 - id: T01
   headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'

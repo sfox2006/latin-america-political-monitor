@@ -6,8 +6,8 @@ Follow-up on the international-relations scope. Office-holders, aliases, and int
 
 Headline only, accent-insensitive, Spanish / Portuguese / English / French. Language is guessed from function words so Spanish-press `EU` is the United States and English `EU` is the European Union. `UE` is the European Union in Spanish, Portuguese, and French. Those abbreviations are case-sensitive. A headline that is more than 70% uppercase still matches them.
 
-- Tier 1: a Latin American country or leader plus a different country, leader, or institution (a second Latin American country counts). The OAS, IMF, EU, and UN are institutions, so "Colombia apela al FMI" and "Nicaragua responde a la UE" are Tier 1.
-- Tier 2: exactly one Latin American country and a strong international-relations term, or two distinct weak terms on a country name. Weak terms are counted by the matched word, so Spanish `visita` and English `visit` do not double-count.
+- Tier 1: a Latin American country, leader, or bloc plus a different country, leader, institution, or bloc (a second Latin American country counts). Mercosur, CELAC, the Comunidad Andina, the Alianza del Pacífico, and ALBA are Latin American groups in `latam_blocs`, so "La UE y Mercosur firman acuerdo", "Mercosur rechaza aranceles de Trump", "CELAC y la UE celebran cumbre", and "Comunidad Andina rechaza aranceles de EE.UU." are Tier 1 with no country named. A bloc headline with no country is filed under América Latina. The OAS, IMF, EU, and UN stay foreign institutions, so "Colombia apela al FMI" and "Nicaragua responde a la UE" are Tier 1.
+- Tier 2: exactly one Latin American country or bloc and a strong international-relations term, or two distinct weak terms on a country name. "Mercosur rechaza aranceles" is Tier 2. Weak terms are counted by the matched word, so Spanish `visita` and English `visit` do not double-count. A bloc alone with no strong term is dropped. Mercosur and Mercosul are one group.
 - Dropped: everything else. A weak alias counts only when a non-weak entity from a different group is also present. Puerto Rico plus the United States needs a strong international-relations term.
 
 Law-signing phrases in `law_signing_stoplist` are masked before any entity or term match. `Lula sanciona ley de salario minimo` and `Sheinbaum sanciona reforma judicial` drop. `Trump sanciona a Petro` and `EEUU sanciona a funcionarios venezolanos` stay, because those are not law-signing phrases and they name two sides. Explicit sanction forms (`sanciones`, `sanctions`, `sanções`) remain strong terms. There is no bare `sancion*` wildcard.
@@ -22,13 +22,15 @@ A scoreline (`1-1`, `3 a 0`, `2x1`, `2:1` next to a result verb) counts as one s
 
 Known gap, labelled and dropped: `Argentina y Chile sellan acuerdo de gas en la final de la Copa` (S101) is an in-scope government gas deal, and the hard term `Copa` drops it. Hard terms are not loosened. The matcher is frozen to the reference rules.
 
+Accepted sports behaviour, also frozen: a Copa Mercosur headline that names two countries stays Tier 1, because the countries are the pair and Mercosur is in `override_ir`. A Copa Mercosur headline that names only the bloc, or only clubs, drops. BRICS is still a foreign institution, so BRICS plus the EU ("BRICS y la UE firman un acuerdo") drops: neither side is a Latin American group.
+
 The verified file keeps `Argentina reclama a Brasil por partido de Mercosur` and `Seleccion de Colombia visita la Casa Blanca; Petro y Trump hablan`. The same override keeps `Brasil gana a Argentina; Lula y Milei se cruzan en redes`, `Milei y Lula se enfrentan en la final de la Copa`, `Lula y Trump asisten a un partido durante visita de Estado`, `Copa: Trump y Sheinbaum se reunen antes del Mundial`, and `Partido de Petro rompe con Milei`. `Amistoso Uruguay-Paraguay termina 1-1`, `El entrenador Lula Da Silva dirige a Brasil ante Argentina`, and `Gol de Trump en Argentina vs Chile` drop from the vocabulary itself. `Miss Colombia visita Venezuela` drops.
 
 Two headlines stay dropped and are left for the owner. `Brasil vence a Argentina en la Copa; Milei critica al arbitro` and `Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias` each name one leader beside a fixture, which is not enough for the leader override. Both are labelled drops (S131, S132) and are in the borderline section.
 
 `bbc.com/mundo` is labelled BBC Mundo from the article path. Other `bbc.com` paths stay BBC News. The domain alone cannot tell them apart, and both still share one GDELT query.
 
-222 labelled headlines in `tests/fixtures/test_headlines.yml` are asserted (103 keep, 119 drop) and match the reference checker with no mismatches. `entities.yml` is the Sources file verbatim. The GDELT recall list lives in `gdelt.yml` so that vocabulary file is not edited. The 15 borderline headlines, the two one-leader fixtures, and five pattern notes are in that file and are not gated on their own. They are listed on the pull request so the owner can rule on them.
+249 labelled headlines in `tests/fixtures/test_headlines.yml` are asserted (120 keep, 129 drop) and match the reference checker with no mismatches. `entities.yml` is the Sources file verbatim. The GDELT recall list lives in `gdelt.yml` so that vocabulary file is not edited. The 15 borderline headlines, the two one-leader fixtures, and five pattern notes are in that file and are not gated on their own. They are listed on the pull request so the owner can rule on them.
 
 ## Catalogue
 
