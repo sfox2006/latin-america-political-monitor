@@ -7,6 +7,8 @@ from the desk list and the sample briefings whose domains were checked.
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from .models import Publication
 
 
@@ -22,7 +24,7 @@ LATIN_AMERICAN_PUBLICATIONS = [
     _p("Perfil", "perfil.com", "Argentina"),
     _p("Ámbito Financiero", "ambito.com", "Argentina"),
     _p("La Derecha Diario", "derechadiario.com.ar", "Argentina"),
-    _p("Filo News", "filo.news", "Argentina"),
+    _p("Filo.news", "filo.news", "Argentina"),
     _p("El Deber", "eldeber.com.bo", "Bolivia"),
     _p("La Razón", "la-razon.com", "Bolivia"),
     _p("Los Tiempos", "lostiempos.com", "Bolivia"),
@@ -49,10 +51,10 @@ LATIN_AMERICAN_PUBLICATIONS = [
     _p("La República", "larepublica.co", "Colombia"),
     _p("La Silla Vacía", "lasillavacia.com", "Colombia"),
     _p("El Colombiano", "elcolombiano.com", "Colombia"),
-    _p("El Heraldo", "elheraldo.co", "Colombia"),
+    _p("El Heraldo (Colombia)", "elheraldo.co", "Colombia"),
     _p("La Nación", "nacion.com", "Costa Rica"),
     _p("CRHoy", "crhoy.com", "Costa Rica"),
-    _p("Delfino", "delfino.cr", "Costa Rica"),
+    _p("Delfino.cr", "delfino.cr", "Costa Rica"),
     _p("Semanario Universidad", "semanariouniversidad.com", "Costa Rica"),
     _p("Granma", "granma.cu", "Cuba"),
     _p("14ymedio", "14ymedio.com", "Cuba"),
@@ -122,7 +124,12 @@ LATIN_AMERICAN_PUBLICATIONS = [
     _p("Globovisión", "globovision.com", "Venezuela"),
     _p("teleSUR", "telesurtv.net", "Venezuela"),
     _p("Banca y Negocios", "bancaynegocios.com", "Venezuela"),
-    _p("Ministerio de Relaciones Exteriores", "mppre.gob.ve", "Venezuela"),
+    # Regional desks. No single home country, so collection uses the international query shape.
+    _p("Bloomberg Línea", "bloomberglinea.com", "Latin America"),
+    _p("Americas Quarterly", "americasquarterly.org", "Latin America"),
+    _p("Diálogo Américas", "dialogo-americas.com", "Latin America"),
+    _p("El Cato", "elcato.org", "Latin America"),
+    _p("PanAm Post", "panampost.com", "Latin America"),
 ]
 
 INTERNATIONAL_PUBLICATIONS = [
@@ -154,11 +161,6 @@ INTERNATIONAL_PUBLICATIONS = [
     _p("ABC News Australia", "abc.net.au", "Australia", "international"),
     _p("AFP", "afp.com", "France", "international"),
     _p("EFE", "efe.com", "Spain", "international"),
-    _p("Bloomberg Línea", "bloomberglinea.com", "United States", "international"),
-    _p("Americas Quarterly", "americasquarterly.org", "United States", "international"),
-    _p("Diálogo Américas", "dialogo-americas.com", "United States", "international"),
-    _p("El Cato", "elcato.org", "United States", "international"),
-    _p("PanAm Post", "panampost.com", "United States", "international"),
     _p("El American", "elamerican.com", "United States", "international"),
     _p("CNN Español", "cnnespanol.cnn.com", "United States", "international"),
     _p("El Nuevo Herald", "elnuevoherald.com", "United States", "international"),
@@ -168,6 +170,17 @@ INTERNATIONAL_PUBLICATIONS = [
 
 PUBLICATIONS = LATIN_AMERICAN_PUBLICATIONS + INTERNATIONAL_PUBLICATIONS
 PUBLICATION_BY_DOMAIN = {publication.domain: publication for publication in PUBLICATIONS}
+
+
+def publisher_name(publication: Publication, url: str) -> str:
+    """Label an article. ``bbc.com/mundo`` is BBC Mundo; other BBC paths stay BBC News.
+
+    The catalogue domain cannot tell those apart, so the article path is the rule.
+    """
+    path = urlparse(url).path.lower()
+    if publication.domain == "bbc.com" and (path == "/mundo" or path.startswith("/mundo/")):
+        return "BBC Mundo"
+    return publication.name
 
 
 def match_publication(domain: str) -> Publication | None:

@@ -1,0 +1,676 @@
+meta:
+  as_of: '2026-09-30'
+  labelled_by: Grok Bot (executor) applying Sam's rule; NOT reviewed by Sam
+  rule: keep only headlines about how a Latin American country/leader deals with another country/leader/institution. Tier 1 = names a LatAm entity AND a different country/leader/institution, or two LatAm
+    entities. Tier 2 = one LatAm entity + an IR term. Else drop (domestic).
+  source_headline_count: 58
+  counts:
+    should_match_tier1: 32
+    should_match_tier2: 4
+    should_drop: 22
+    borderline: 15
+  note: 'IDs T01.. are real example headlines (all headlines found in Prototipo_Noticias, notipo_, notipo__1; the Medios_Posibles file has none). IDs S01.. are synthetic guards. The `expected` label is
+    the rule-based classification; items in `borderline` are the ones Sam should rule on (changing them changes the label). Run: python3 check_entities.py entities.yml test_headlines.yml'
+should_match:
+- id: T01
+  source_file: Prototipo_Noticias.docx.txt
+  section: México
+  publisher: Proceso
+  headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'
+  expected: 1
+  reason: MX figure + 'EU' (Spanish-press abbreviation for Estados Unidos); NYT is a source tag and must be masked
+  borderline: true
+- id: T02
+  source_file: Prototipo_Noticias.docx.txt
+  section: Cuba
+  publisher: Diario de Cuba
+  headline: 'Marco Rubio al régimen cubano: ''Aprenderán la lección por las malas'''
+  expected: 1
+  reason: US Secretary of State addresses Cuba's government
+- id: T05
+  source_file: Prototipo_Noticias.docx.txt
+  section: Nicaragua
+  publisher: Confidencial
+  headline: Proyecto de resolución de la OEA fija a Nicaragua como una “amenaza” para el hemisferio
+  expected: 1
+  reason: Nicaragua + OEA (institution)
+- id: T06
+  source_file: Prototipo_Noticias.docx.txt
+  section: Argentina
+  publisher: DW
+  headline: Argentina threatens UK legal action over Falklands oil
+  expected: 1
+  reason: Argentina + United Kingdom (also Falklands dispute token)
+- id: T07
+  source_file: Prototipo_Noticias.docx.txt
+  section: Argentina
+  publisher: La Nación
+  headline: '“Posibles terroristas”: el vocero presidencial habló de las declaraciones de Milei sobre los extranjeros expulsados'
+  expected: 2
+  reason: Single LatAm entity (Milei/AR) + strong term 'expulsados'
+  borderline: true
+- id: T09
+  source_file: Prototipo_Noticias.docx.txt
+  section: Brasil
+  publisher: El Comercio
+  headline: '“Quieren tomar el río, y también la playa, quieren las tierras raras”: Lula se inspira en Bad Bunny para criticar a Trump | VIDEO'
+  expected: 1
+  reason: Lula (BR) criticises Trump (US)
+- id: T10
+  source_file: Prototipo_Noticias.docx.txt
+  section: Colombia
+  publisher: Reuters
+  headline: El Gobierno de Colombia apela al FMI tras denunciar su crisis fiscal "más crítica"
+  expected: 1
+  reason: Colombia + FMI (institution)
+- id: T13
+  source_file: Prototipo_Noticias.docx.txt
+  section: Bolivia (section header; article is regional)
+  publisher: El País
+  headline: Estados Unidos lanza una nueva ofensiva contra jueces, fiscales, empresarios y políticos de América Latina
+  expected: 1
+  reason: US + regional term 'América Latina'
+  borderline: true
+- id: T14
+  source_file: Prototipo_Noticias.docx.txt
+  section: Chile
+  publisher: El País
+  headline: Kast enfrenta una dura resistencia interna por haber sumado a Chile al Escudo de las Américas de Trump
+  expected: 1
+  reason: Chile/Kast + Escudo de las Américas + Trump
+- id: T16
+  source_file: Prototipo_Noticias.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: 'Marco Rubio: EEUU trabaja con la AN 2015 para elecciones libres en Venezuela “lo antes posible”'
+  expected: 1
+  reason: Rubio/EEUU + Venezuela
+- id: T18
+  source_file: notipo_.docx.txt
+  section: México
+  publisher: El Universal
+  headline: EU tira producción de autos eléctricos en México
+  expected: 1
+  reason: '''EU'' (= Estados Unidos / US firms) + México'
+  borderline: true
+- id: T20
+  source_file: notipo_.docx.txt
+  section: México
+  publisher: Americas Quarterly
+  headline: A Red Flag in Mexico’s Democratic Backsliding- A new law could annul election results in cases of “foreign interference,” handing the ruling party a powerful tool.
+  expected: 2
+  reason: Mexico + strong term 'foreign interference'
+  borderline: true
+- id: T21
+  source_file: notipo_.docx.txt
+  section: Cuba
+  publisher: Reuters – Americas
+  headline: Trump predicts Cuba and US will make a deal
+  expected: 1
+  reason: Trump/US + Cuba
+- id: T22
+  source_file: notipo_.docx.txt
+  section: Cuba
+  publisher: El Diario de Cuba
+  headline: China promete sostener al régimen cubano y exige a EEUU levantar las sanciones
+  expected: 1
+  reason: China + Cuba + EEUU
+- id: T23
+  source_file: notipo_.docx.txt
+  section: Honduras
+  publisher: El Heraldo
+  headline: Caravana de más de 600 migrantes, incluidos hondureños, reanuda su camino hacia la frontera de México con EEUU
+  expected: 1
+  reason: Honduran + Mexico + EEUU (three actors)
+  borderline: true
+- id: T25
+  source_file: notipo_.docx.txt
+  section: Argentina
+  publisher: La Nación
+  headline: El Gobierno denunció vuelos ilegales de una empresa británica entre Malvinas y Punta Arenas
+  expected: 1
+  reason: Malvinas (AR-UK dispute token) + 'británica'; 'El Gobierno' is unnamed so the dispute list carries it
+- id: T28
+  source_file: notipo_.docx.txt
+  section: Colombia
+  publisher: El País
+  headline: 'Los venezolanos sin papeles en Colombia buscan rumbo ante las amenazas de De la Espriella: “Tenemos las manos atadas”'
+  expected: 1
+  reason: 'Venezuelans + Colombia + its president: two LatAm countries'
+- id: T30
+  source_file: notipo_.docx.txt
+  section: Ecuador
+  publisher: Primicias
+  headline: Estados Unidos cancela visas a dos ciudadanos de Ecuador y altos cargos de Bolivia, Colombia y Perú
+  expected: 1
+  reason: US + four LatAm countries
+- id: T35
+  source_file: notipo__1.docx.txt
+  section: México
+  publisher: CNN Español
+  headline: Durante años, Estados Unidos persiguió a los capos de la droga de México. Ahora, tiene en la mira a los políticos
+  expected: 1
+  reason: US + México
+  borderline: true
+- id: T36
+  source_file: notipo__1.docx.txt
+  section: México
+  publisher: Infobae
+  headline: México resiste los aranceles de Trump y desplaza a China como principal socio de Estados Unidos
+  expected: 1
+  reason: 'Mexico + Trump + China + US: textbook IR'
+- id: T40
+  source_file: notipo__1.docx.txt
+  section: El Salvador
+  publisher: Alberto News
+  headline: Venezolanos demandan a dos aerolíneas por vuelos que los trasladaron a la temida cárcel del CECOT en El Salvador
+  expected: 1
+  reason: Venezuelans + El Salvador (two LatAm countries)
+  borderline: true
+- id: T41
+  source_file: notipo__1.docx.txt
+  section: Honduras
+  publisher: BBC Mundo
+  headline: Regresa a Honduras Juan Orlando Hernández, expresidente indultado por Trump tras condena por narcotráfico
+  expected: 1
+  reason: Honduras + Trump pardon
+- id: T42
+  source_file: notipo__1.docx.txt
+  section: Nicaragua
+  publisher: Infobae
+  headline: Nicaragua responde a UE que no es "súbdito" ni "vasallo" de ninguna potencia extranjera
+  expected: 1
+  reason: Nicaragua + UE (Spanish 'UE' = Unión Europea)
+- id: T43
+  source_file: notipo__1.docx.txt
+  section: Nicaragua
+  publisher: Infobae
+  headline: Régimen de Nicaragua eleva a 17 las concesiones mineras a cielo abierto para firmas chinas tras adjudicar dos nuevos lotes
+  expected: 1
+  reason: Nicaragua + 'chinas' (weak adjective, admitted because a non-weak LatAm entity is present)
+  borderline: true
+- id: T44
+  source_file: notipo__1.docx.txt
+  section: Argentina
+  publisher: Filo.news
+  headline: Kristalina Georgieva visita la Argentina y refuerza el respaldo del FMI al gobierno de Javier Milei
+  expected: 1
+  reason: IMF chief + Argentina/Milei
+- id: T46
+  source_file: notipo__1.docx.txt
+  section: Brasil
+  publisher: BBC Mundo
+  headline: Brasil llama a consultas a su embajador en Argentina luego de que Milei calificara a Lula de "convicto" y "ladrón" en Sao Paulo
+  expected: 1
+  reason: Brasil + Argentina + embajador + consultas
+- id: T47
+  source_file: notipo__1.docx.txt
+  section: Brasil
+  publisher: Infobae
+  headline: 'Brasil: por qué entender a nuestro principal socio comercial es una cuestión de pragmatismo, no de ideología'
+  expected: 2
+  reason: Single entity (Brasil) + strong 'socio comercial'
+  borderline: true
+- id: T48
+  source_file: notipo__1.docx.txt
+  section: Colombia
+  publisher: DW
+  headline: Colombia romperá relaciones con Cuba y Nicaragua
+  expected: 1
+  reason: Three LatAm countries + 'romperá relaciones'
+- id: T49
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: Globovisión
+  headline: Ecuador concluye la atención consular presencial que activó en Venezuela tras terremotos
+  expected: 1
+  reason: Ecuador + Venezuela + consular
+- id: T50
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: teleSUR
+  headline: 'Ecuador: piden esclarecer asesinato de fiscal que investigaba ataques de EE.UU. contra pescadores'
+  expected: 1
+  reason: Ecuador + EE.UU.
+  borderline: true
+- id: T51
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: Diálogo Américas
+  headline: China fortalece posición estratégica en el sector del oro y el cobre ecuatorianos
+  expected: 1
+  reason: China + ecuatorianos
+- id: T53
+  source_file: notipo__1.docx.txt
+  section: Perú
+  publisher: Banca y Negocios
+  headline: Keiko Fujimori gobernará Perú en un complejo equilibrio entre EEUU y China
+  expected: 1
+  reason: Peru/Fujimori + EEUU + China
+- id: T54
+  source_file: notipo__1.docx.txt
+  section: Perú
+  publisher: Infobae
+  headline: Autoridades internacionales llegan hoy al Perú para la toma de mando de Keiko Fujimori
+  expected: 2
+  reason: Single entity (Perú) + strong 'autoridades internacionales'; no named foreign country
+  borderline: true
+- id: T55
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: El País
+  headline: Trump dice que Venezuela todavía no está “preparada” para celebrar elecciones
+  expected: 1
+  reason: Trump + Venezuela
+- id: T56
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: El Nacional
+  headline: John Barrett reveló que EE UU aportó hasta 386 millones de dólares para asistencia humanitaria tras los terremotos
+  expected: 1
+  reason: EE UU + John Barrett (US chargé in Caracas; implies VE) - headline never says Venezuela
+  borderline: true
+- id: T58
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: MPPRE (Venezuelan foreign ministry)
+  headline: Venezuela reanuda relaciones consulares con Perú y anuncia salida de la CPI
+  expected: 1
+  reason: Venezuela + Perú + CPI
+- id: S11
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Mexico resists Trump tariffs as Sheinbaum seeks deal
+  expected: 1
+  reason: 'English: Mexico + Trump + tariffs (Sam''s own example)'
+- id: S12
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Trump amenaza con aranceles a Brasil
+  expected: 1
+  reason: Trump + Brasil
+- id: S13
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Brasil chama embaixador em Buenos Aires para consultas
+  expected: 1
+  reason: 'Portuguese: Brasil + Buenos Aires (weak metonym admitted by the non-weak Brasil) + embaixador/consultas'
+- id: S14
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Le Venezuela rompt ses relations diplomatiques avec le Panama
+  expected: 1
+  reason: 'French: Venezuela + Panama'
+- id: S16
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Ecuador expulsa a embajador de Cuba
+  expected: 1
+  reason: Ecuador + Cuba + expulsa/embajador
+- id: S18
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Perú reactiva su embajada en Venezuela
+  expected: 1
+  reason: 'Perú + Venezuela: two LatAm groups, embajada'
+- id: S20
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Puerto Rico y República Dominicana firman acuerdo de cooperación
+  expected: 1
+  reason: 'PR + DO: two LatAm groups'
+- id: S23
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Maduro pide al FMI reabrir el crédito a Venezuela
+  expected: 1
+  reason: case-sensitive Maduro + FMI; (historic-style) sanity check
+should_drop:
+- id: T03
+  source_file: Prototipo_Noticias.docx.txt
+  section: Cuba
+  publisher: Diario de Cuba
+  headline: Con Cuba hundida en la miseria, Díaz-Canel quiere 'ampliar' la vigilancia de los CDR
+  expected: drop
+  reason: Domestic repression/surveillance; Cuba + its own leader = one entity, no IR term
+- id: T04
+  source_file: Prototipo_Noticias.docx.txt
+  section: Honduras
+  publisher: El Heraldo
+  headline: 'Tegucigalpa cumple un aniversario bajo el azote criminal: “Tienen 24 horas para salir o si no los topamos a tiros”'
+  expected: drop
+  reason: Local crime/city news
+- id: T08
+  source_file: Prototipo_Noticias.docx.txt
+  section: Argentina
+  publisher: La Nación
+  headline: 'El riesgo país subió 18% en el mes: las tres preocupaciones de los inversores sobre la economía de Milei'
+  expected: drop
+  reason: Domestic economy; 'riesgo país' and 'inversores' are weak terms only
+- id: T11
+  source_file: Prototipo_Noticias.docx.txt
+  section: Colombia
+  publisher: El Colombiano
+  headline: 'Así es la megacárcel que Abelardo ordenó terminar pronto: ¿cuántos cupos tendrá?'
+  expected: drop
+  reason: Domestic prison policy; first-name-only 'Abelardo' is a weak alias
+- id: T12
+  source_file: Prototipo_Noticias.docx.txt
+  section: Ecuador
+  publisher: Primicias
+  headline: El caudal de Coca Codo Sinclair, la mayor hidroeléctrica de Ecuador, ha caído desde mediados de septiembre de 2026
+  expected: drop
+  reason: Domestic energy (Chinese-built plant is not mentioned in the headline)
+- id: T15
+  source_file: Prototipo_Noticias.docx.txt
+  section: Venezuela
+  publisher: Americas Quarterly
+  headline: Can Venezuela’s Push for Elections Succeed?
+  expected: drop
+  reason: Headline has a single LatAm entity and no IR term (the body is likely about US-Venezuela dealings, but the filter is headline-only)
+  borderline: true
+- id: T17
+  source_file: Prototipo_Noticias.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: Delcy Rodríguez solicita a la AN la reforma parcial de la Ley contra el Odio
+  expected: drop
+  reason: Domestic legislation
+- id: T19
+  source_file: notipo_.docx.txt
+  section: México
+  publisher: AP
+  headline: Mexico’s journalists have long faced bullets. Now lawsuits against them are rising
+  expected: drop
+  reason: Domestic press freedom
+- id: T24
+  source_file: notipo_.docx.txt
+  section: Nicaragua
+  publisher: Confidencial
+  headline: Incrementan a 15 las mujeres presas políticas en desaparición forzada
+  expected: drop
+  reason: Domestic human-rights; headline does not name Nicaragua at all
+- id: T26
+  source_file: notipo_.docx.txt
+  section: Argentina
+  publisher: Infobae
+  headline: El Gobierno relativiza la caída del índice de confianza y busca explicar los cuestionamientos de Milei a las mediciones
+  expected: drop
+  reason: Domestic politics/economy
+- id: T27
+  source_file: notipo_.docx.txt
+  section: Colombia
+  publisher: El Heraldo (CO)
+  headline: 'De la Espriella arremete contra el gobierno Petro tras decisión sobre Iván Name: “Los corruptos tienen que caer”'
+  expected: drop
+  reason: Two Colombian leaders = ONE country group; domestic
+- id: T29
+  source_file: notipo_.docx.txt
+  section: Ecuador
+  publisher: Expreso
+  headline: 'María Paz Jervis deja la CIP tras advertir días antes: “Pocas veces he visto tanto miedo'
+  expected: drop
+  reason: Domestic business-chamber news; no entity in the headline
+- id: T31
+  source_file: notipo_.docx.txt
+  section: Perú
+  publisher: El Comercio
+  headline: 'Sueldo mínimo: Keiko Fujimori aprobó primer alza de S/100 en la RMV desde octubre'
+  expected: drop
+  reason: Domestic labour policy
+- id: T32
+  source_file: notipo_.docx.txt
+  section: Venezuela
+  publisher: El País
+  headline: Tras los intentos frustrados de retorno a Venezuela de María Corina Machado, vuelve su jefa de Comunicaciones
+  expected: drop
+  reason: Opposition staff news; single country
+- id: T33
+  source_file: notipo_.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: Familiares de presos políticos exigen excarcelaciones y el fin de “tribunales de terrorismo”
+  expected: drop
+  reason: Domestic; no entity
+- id: T34
+  source_file: notipo_.docx.txt
+  section: Venezuela
+  publisher: Efecto Cocuyo
+  headline: Cabello niega bloqueo de medios y advierte que la libertad de expresión “no les pertenece”
+  expected: drop
+  reason: 'Domestic: ''bloqueo de medios'' is a weak term, must not be read as economic blockade'
+- id: T37
+  source_file: notipo__1.docx.txt
+  section: Cuba
+  publisher: Infobae
+  headline: Díaz-Canel asegura que Cuba es víctima de un "genocidio fríamente calculado"
+  expected: drop
+  reason: Headline names no foreign actor or IR term (implicit US embargo)
+  borderline: true
+- id: T38
+  source_file: notipo__1.docx.txt
+  section: El Salvador
+  publisher: El Nuevo Herald
+  headline: Tras derrotar a las pandillas, El Salvador enfrenta la incertidumbre económica
+  expected: drop
+  reason: Domestic economy/security
+- id: T39
+  source_file: notipo__1.docx.txt
+  section: El Salvador
+  publisher: DW
+  headline: 'El Salvador: oposición elige rivales de Bukele para comicios'
+  expected: drop
+  reason: Domestic elections
+- id: T45
+  source_file: notipo__1.docx.txt
+  section: Argentina
+  publisher: Clarín
+  headline: '“Momento notable”: La carne argentina, con fortaleza en los precios internacionales'
+  expected: drop
+  reason: Agribusiness prices; 'internacionales' is not an IR term
+- id: T52
+  source_file: notipo__1.docx.txt
+  section: Ecuador
+  publisher: La República
+  headline: Más de 1000 menores fueron abusadas en la frontera con Ecuador
+  expected: drop
+  reason: Single LatAm entity; 'frontera' is weak; child-abuse crime story
+- id: T57
+  source_file: notipo__1.docx.txt
+  section: Venezuela
+  publisher: DW
+  headline: Machado no participará en diálogos con gobierno de Venezuela
+  expected: drop
+  reason: Domestic opposition vs government; 'diálogos' is weak
+- id: S01
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Nuevo México aprueba ley de inmigración
+  expected: drop
+  reason: 'Stoplist: US state, no LatAm entity (note: if the matcher did not mask it, it would be a false ''México'').'
+- id: S02
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: New Mexico governor signs border security bill
+  expected: drop
+  reason: 'Stoplist: New Mexico'
+- id: S03
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: 'Panama Papers: fiscalía pide prisión para fundadores de Mossack Fonseca'
+  expected: drop
+  reason: 'DECISION: Panama Papers stoplisted; no other entity'
+- id: S04
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Guinea Ecuatorial firma acuerdo con Rusia
+  expected: drop
+  reason: Equatorial Guinea is not Ecuador; masked
+- id: S05
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Georgia y la UE firman acuerdo comercial
+  expected: drop
+  reason: No LatAm entity
+- id: S06
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Chile con carne recipe wins award in Texas
+  expected: drop
+  reason: 'Food: chile con carne stoplisted'
+- id: S07
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Colombia Británica declara emergencia por incendios
+  expected: drop
+  reason: British Columbia masked; 'Colombia' must not match
+- id: S08
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Salvador de Bahía recibe cumbre de alcaldes
+  expected: drop
+  reason: Bare 'Salvador' is not an El Salvador alias; 'cumbre' alone is Tier 2 only with a LatAm entity
+- id: S09
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: 'Bolivia: la paz social se resquebraja por el paro de transportistas'
+  expected: drop
+  reason: Single entity, no IR term ('paz' is not an alias for Paz)
+- id: S10
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Peña Nieto enfrenta nuevo proceso judicial
+  expected: drop
+  reason: Bare surname 'Peña' is not an alias; no country named
+- id: S15
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Sheinbaum anuncia nuevo programa de becas para jóvenes
+  expected: drop
+  reason: Domestic social policy
+- id: S17
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Chile aprueba reforma de pensiones
+  expected: drop
+  reason: Domestic
+- id: S19
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: Puerto Rico y EEUU negocian fondos federales para Medicaid
+  expected: drop
+  reason: PR+US is federal/domestic unless a strong IR term is present
+- id: S21
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: El precio del dólar cierra en alza en Argentina
+  expected: drop
+  reason: Weak/no IR term; 'dólar' is not an IR term
+- id: S22
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: WHO warns of dengue outbreak in Honduras
+  expected: drop
+  reason: English 'WHO' intentionally not an alias; single entity, no IR term
+- id: S24
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  headline: El maduro proceso de paz sigue en Colombia
+  expected: drop
+  reason: Lowercase 'maduro' (adjective) must not match; single entity, no IR term
+borderline:
+- id: T01
+  headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'
+  publisher: Proceso
+  current_label: 1
+  question_for_sam: 'US agencies analysing allegations against a Mexican politician (no formal probe per NYT): decide if ''US investigates Mexican politician'' counts as IR.'
+- id: T07
+  headline: '“Posibles terroristas”: el vocero presidencial habló de las declaraciones de Milei sobre los extranjeros expulsados'
+  publisher: La Nación
+  current_label: 2
+  question_for_sam: Expulsion of foreigners is domestic immigration policy unless a specific country is named; matches only via the 'expuls*' term.
+- id: T13
+  headline: Estados Unidos lanza una nueva ofensiva contra jueces, fiscales, empresarios y políticos de América Latina
+  publisher: El País
+  current_label: 1
+  question_for_sam: Filed under BOLIVIA in the source but the headline is region-wide and names no country; matches only through the LATAM regional term. Decide whether region-wide items are wanted.
+- id: T15
+  headline: Can Venezuela’s Push for Elections Succeed?
+  publisher: Americas Quarterly
+  current_label: drop
+  question_for_sam: Sam's briefing kept it; headline gives no foreign actor. Drop under the headline-only rule, or whitelist by publisher/topic?
+- id: T18
+  headline: EU tira producción de autos eléctricos en México
+  publisher: El Universal
+  current_label: 1
+  question_for_sam: Probably US automakers cutting EV output in Mexico - corporate/economic, not state-to-state. 'EU' also reads as European Union outside Spanish-press convention.
+- id: T20
+  headline: A Red Flag in Mexico’s Democratic Backsliding- A new law could annul election results in cases of “foreign interference,” handing the ruling party a powerful tool.
+  publisher: Americas Quarterly
+  current_label: 2
+  question_for_sam: 'Domestic law about foreign interference: IR-adjacent only through the term; no foreign actor named.'
+- id: T23
+  headline: Caravana de más de 600 migrantes, incluidos hondureños, reanuda su camino hacia la frontera de México con EEUU
+  publisher: El Heraldo
+  current_label: 1
+  question_for_sam: 'Migrant caravan: governments are not acting in the headline. By the entity rule it is Tier 1; by the ''how a country deals with another'' test it is not.'
+- id: T35
+  headline: Durante años, Estados Unidos persiguió a los capos de la droga de México. Ahora, tiene en la mira a los políticos
+  publisher: CNN Español
+  current_label: 1
+  question_for_sam: 'US law enforcement targeting Mexican politicians: Tier 1 by entities; Sam''s ''DEA/US investigates Mexican politician'' borderline.'
+- id: T37
+  headline: Díaz-Canel asegura que Cuba es víctima de un "genocidio fríamente calculado"
+  publisher: Infobae
+  current_label: drop
+  question_for_sam: Implicitly about the US embargo, but the headline is single-entity with no IR term; drops under the headline-only rule.
+- id: T40
+  headline: Venezolanos demandan a dos aerolíneas por vuelos que los trasladaron a la temida cárcel del CECOT en El Salvador
+  publisher: Alberto News
+  current_label: 1
+  question_for_sam: Private litigation against airlines; the deportation-flights story is IR (US-SV-VE) but the headline has no governments acting. Also low-quality source (Alberto News).
+- id: T43
+  headline: Régimen de Nicaragua eleva a 17 las concesiones mineras a cielo abierto para firmas chinas tras adjudicar dos nuevos lotes
+  publisher: Infobae
+  current_label: 1
+  question_for_sam: Commercial/mining concessions to Chinese firms; state-to-private rather than state-to-state.
+- id: T47
+  headline: 'Brasil: por qué entender a nuestro principal socio comercial es una cuestión de pragmatismo, no de ideología'
+  publisher: Infobae
+  current_label: 2
+  question_for_sam: Opinion piece written from another country's viewpoint; the headline never names that country, so it only reaches Tier 2.
+- id: T50
+  headline: 'Ecuador: piden esclarecer asesinato de fiscal que investigaba ataques de EE.UU. contra pescadores'
+  publisher: teleSUR
+  current_label: 1
+  question_for_sam: Domestic murder of a prosecutor; the US link is the subject of his investigation, not of the government's conduct.
+- id: T54
+  headline: Autoridades internacionales llegan hoy al Perú para la toma de mando de Keiko Fujimori
+  publisher: Infobae
+  current_label: 2
+  question_for_sam: 'Foreign delegations at an inauguration: diplomatic event but names no country; survives only via the ir_term.'
+- id: T56
+  headline: John Barrett reveló que EE UU aportó hasta 386 millones de dólares para asistencia humanitaria tras los terremotos
+  publisher: El Nacional
+  current_label: 1
+  question_for_sam: Needs the `implies_country` rule on John Barrett to be Tier 1; otherwise the headline has no LatAm entity.
+- id: B-extra-1
+  headline: (pattern) Venezolanos demandan a aerolíneas por vuelos al CECOT
+  current_label: 1
+  question_for_sam: 'Private litigation over state deportation flights: IR or domestic/legal? (see T-id for the Alberto News headline)'
+- id: B-extra-2
+  headline: (pattern) Caravana de migrantes avanza hacia la frontera con EEUU
+  current_label: 1
+  question_for_sam: Migrant caravans name several countries but no government action. Keep, demote to Tier 2, or drop?
+- id: B-extra-3
+  headline: (pattern) DEA / EEUU investiga a político mexicano
+  current_label: 1
+  question_for_sam: US prosecution of a foreign politician is IR-relevant when it reaches a government or leads to sanctions/extradition; headline-only rule cannot tell.
+- id: B-extra-4
+  headline: (pattern) Empresas de EEUU/China invierten en [país LatAm]
+  current_label: 1
+  question_for_sam: 'Corporate investment vs state-to-state: should private-sector actors count as ''other country'' when the headline only says ''China''/''EEUU''?'
+- id: B-extra-5
+  headline: (pattern) Region-wide US actions filed under one country (El País 'Estados Unidos lanza una nueva ofensiva… América Latina')
+  current_label: 1
+  question_for_sam: Keep region-wide items via the LATAM regional term?

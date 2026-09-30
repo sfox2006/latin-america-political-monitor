@@ -13,6 +13,7 @@ from latin_america_monitor.sources import (
     LATIN_AMERICAN_PUBLICATIONS,
     PUBLICATIONS,
     match_publication,
+    publisher_name,
 )
 
 
@@ -21,11 +22,15 @@ def _terms(group: str) -> list[str]:
 
 
 def test_source_catalogue_is_broad():
-    assert len(PUBLICATIONS) == 146
-    assert len(LATIN_AMERICAN_PUBLICATIONS) == 108
-    assert len(INTERNATIONAL_PUBLICATIONS) == 38
-    assert len({publication.market for publication in LATIN_AMERICAN_PUBLICATIONS}) == 21
+    assert len(PUBLICATIONS) == 145
+    assert len(LATIN_AMERICAN_PUBLICATIONS) == 112
+    assert len(INTERNATIONAL_PUBLICATIONS) == 33
+    assert len({publication.market for publication in LATIN_AMERICAN_PUBLICATIONS}) == 22
     assert len({publication.domain for publication in PUBLICATIONS}) == len(PUBLICATIONS)
+    domains = {publication.domain for publication in PUBLICATIONS}
+    assert "mppre.gob.ve" not in domains
+    assert "albertonews.com" not in domains
+    assert "reutersconnect.com" not in domains
 
 
 def test_matches_subdomains():
@@ -53,7 +58,7 @@ def test_added_outlets_match_on_their_own_domains():
     assert match_publication("cnnespanol.cnn.com").name == "CNN Español"
     assert match_publication("edition.cnn.com").name == "CNN"
     assert match_publication("www.elnuevoherald.com").name == "El Nuevo Herald"
-    assert match_publication("elheraldo.co").name == "El Heraldo"
+    assert match_publication("elheraldo.co").name == "El Heraldo (Colombia)"
     assert match_publication("elheraldo.co").market == "Colombia"
     assert match_publication("www.elheraldo.hn").name == "El Heraldo"
     assert match_publication("www.elheraldo.hn").market == "Honduras"
@@ -61,10 +66,15 @@ def test_added_outlets_match_on_their_own_domains():
     assert match_publication("economia.uol.com.br").name == "UOL"
     assert match_publication("www.afp.com").name == "AFP"
     assert match_publication("en.mercopress.com").name == "MercoPress"
-    assert match_publication("mppre.gob.ve").market == "Venezuela"
+    assert match_publication("mppre.gob.ve") is None
     assert match_publication("dialogo-americas.com").name == "Diálogo Américas"
     assert match_publication("derechadiario.com.ar").name == "La Derecha Diario"
     assert match_publication("revistafactum.com").name == "Revista Factum"
+    assert match_publication("republica.com").name == "República GT"
+    bbc = match_publication("www.bbc.com")
+    assert bbc is not None and bbc.name == "BBC News"
+    assert publisher_name(bbc, "https://www.bbc.com/mundo/articles/abc") == "BBC Mundo"
+    assert publisher_name(bbc, "https://www.bbc.com/news/world") == "BBC News"
 
 
 def test_queries_cover_both_scopes():
@@ -104,12 +114,14 @@ def test_queries_fit_the_index_limit_and_cover_every_domain():
 
     places = set(place_terms())
     international_terms = set(term_pool_for_market(None))
-    for publication in INTERNATIONAL_PUBLICATIONS:
+    pan_regional = [publication for publication in LATIN_AMERICAN_PUBLICATIONS if publication.market == "Latin America"]
+    country_press = [publication for publication in LATIN_AMERICAN_PUBLICATIONS if publication.market != "Latin America"]
+    for publication in INTERNATIONAL_PUBLICATIONS + pan_regional:
         assert intl_places[publication.domain] == places
         assert intl_terms[publication.domain] == international_terms
         assert "sanctions" in intl_terms[publication.domain]
         assert "United States" in intl_terms[publication.domain]
-    for publication in LATIN_AMERICAN_PUBLICATIONS:
+    for publication in country_press:
         assert la_terms[publication.domain] == set(term_pool_for_market(publication.market))
 
     # A domestic story that only names the outlet's own country is not requested.

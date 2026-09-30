@@ -17,27 +17,32 @@ Manual runs (`python main.py` without `--scheduled`) use `MONITOR_TIMEZONE` (def
 The filter runs on the **headline only**, after accent folding and case folding, in Spanish, Portuguese, English, and French. Countries, leaders, aliases, and international-relations terms live in [`latin_america_monitor/entities.yml`](latin_america_monitor/entities.yml). The matcher does not hard-code them.
 
 - **Tier 1.** The headline names a Latin American country or leader and a different country or leader (including two Latin American ones). These sort first within the country.
-- **Tier 2.** The headline names one Latin American country, leader, or regional phrase (América Latina, Sudamérica, Centroamérica, Caribe) and an international-relations term: sanctions, tariffs (`aranceles`, `tarifas`), visas, ambassador / `embajador` / `embaixador` and recalled-ambassador phrases (`llama a consultas`), diplomatic or consular relations, treaty, extradition, deportation, summit, OAS/OEA, UN/ONU, IMF/FMI, ICC/CPI, EU/UE, China, Shield of the Americas / Escudo de las Américas, and the rest of the list in `entities.yml`.
-- **Dropped.** Anything else, including a domestic story that only mentions the home country or its own leader.
+- **Tier 1.** The headline names a Latin American country or leader and a different country, leader, or institution (including a second Latin American country, or the OAS, IMF, EU, or UN). These sort first within the country.
+- **Tier 2.** Exactly one Latin American country and a strong international-relations term (sanctions, tariffs, visas, ambassador, treaty, and the rest of `ir_terms` in `entities.yml`). Two different weak terms on a country name also qualify. A leader and that leader's own country count as one entity.
+- **Dropped.** Anything else. Sports fixtures are dropped before matching (`copa`, `eliminatorias`, `goles`, `selección`, `derrota a`, and the other `out_of_scope_hint_terms`). Bare `partido` is not in that list, because in Spanish it is also a political party. The legislative verb `sanciona` (signs a law) is not a sanctions term; `sanciones`, `sancionan`, `sanctions`, and `sanções` still are.
 
-Short names use word boundaries. Stop phrases blank `Nuevo México` / New Mexico, the Panama Papers, and bare `Georgia` before matching, so those do not count as Mexico, Panama, or a foreign country. Everyday words that collide with abbreviations (`us`, Portuguese `eu`, Spanish `un`, French `a eu`, `US$`) are not treated as the United States, the EU, or the UN. `US`, `EU`, `UE`, `UN`, and `UK` match as uppercase tokens, with a few safe lowercase phrases such as `la ue`.
+Short names use word boundaries. Stop phrases blank Nuevo México / New Mexico, the Panama Papers, Equatorial Guinea, British Columbia, and bare Georgia before matching. A longer official name wins when it overlaps a shorter one, so `Estados Unidos Mexicanos` is Mexico. `US$` / `USD` are currency, not the United States.
 
-A headline that names several Latin American countries is filed under the first specific country or leader in reading order. A pan-regional headline with no specific country is filed under América Latina.
+Spanish-press `EU` means Estados Unidos. English `EU` means the European Union. `UE` is the European Union in Spanish, Portuguese, and French. Those abbreviations are case-sensitive, so lowercase `ue` does not match. On a headline that is more than 70% uppercase, the case-sensitive abbreviations are matched either way.
 
-`verified: false` on a leader means the office is not confirmed. Correct `entities.yml` when that changes; do not edit the matcher.
+A headline that names several Latin American countries is filed under the first specific country or leader in reading order. A pan-regional headline with no specific country is filed under América Latina. Puerto Rico plus the United States is domestic unless a strong international-relations term is also present.
+
+Each person has `status` (`VERIFIED`, `PARTIAL`, or `UNVERIFIED`) and, where the file gives it, `since_verified`. `UNVERIFIED` people are not matched. Correct `entities.yml` when an office changes; do not edit the matcher.
 
 ## Catalogue
 
-The watchlist has **146 outlets: 108 Latin American outlets across 21 markets, plus 38 international outlets**. Guyana, Suriname, and Belize are headline entities and have no catalogue outlet. The full list is in [`latin_america_monitor/sources.py`](latin_america_monitor/sources.py). Overlapping desks from the extra-media list were left as the existing entries.
+The watchlist has **145 outlets: 112 Latin American outlets across 22 markets (21 countries plus a pan-regional "Latin America" market), and 33 international outlets**. The full list is in [`latin_america_monitor/sources.py`](latin_america_monitor/sources.py). Domains already in the catalogue were not added again. `elheraldo.co` is El Heraldo (Colombia) and `elheraldo.hn` is the Honduran paper. `cnnespanol.cnn.com` is CNN Español; any other `cnn.com` host stays CNN. `bbc.com/mundo` is labelled BBC Mundo from the article path; other BBC paths stay BBC News, because the domain alone cannot tell them apart.
+
+Not in the catalogue: `mppre.gob.ve` (official page, out of scope for this pass), `albertonews.com`, and `reutersconnect.com`.
 
 Discovery uses the [GDELT DOC 2.0 API](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) and filters results back to the catalogue. GDELT searches the English machine translation of the article, not the headline. Queries are therefore a recall net, and the headline filter is the precision layer:
 
 - A Latin American outlet is requested as `domain AND (another Latin American country, a foreign or IR term, or a non-home leader)`. The outlet's own country and its own leaders are left out, so a domestic story that only names home is not requested.
-- An international wire is requested as `domain AND a Latin American place AND (an IR term or a configured leader token)`.
+- An international wire, and a pan-regional desk with no home country, is requested as `domain AND a Latin American place AND (an IR term or a configured leader token)`.
 
 GDELT leader tokens in the query are a short high-signal set (`Milei`, `Lula`, `Trump`, `Rubio`, `Putin`). Other leaders are still matched on the headline. Encoded queries stay at or under 240 characters. The same story from two publishers is kept; duplicates are removed only when the canonical URL matches (tracking parameters stripped, article ids preserved).
 
-A full pass is **604 index queries** (398 international, 206 Latin American), each at or under 240 encoded characters. At the 5.25 second delay that is about **53 minutes** before any 250-result cap splits. The workflow allows 150 minutes. Tests reject a plan above 750 queries or 80 minutes at the 5.1 second floor.
+A full pass is **494 index queries** (312 international, including the pan-regional desks, and 182 Latin American), each at or under 240 encoded characters. At the 5.25 second delay that is about **43 minutes** before any 250-result cap splits. The workflow allows 150 minutes. Tests reject a plan above 750 queries or 80 minutes at the 5.1 second floor.
 
 ## Run locally
 
@@ -97,6 +102,6 @@ pytest -q
 
 ## Adding or removing newspapers
 
-Edit the two lists in `latin_america_monitor/sources.py`. Each entry contains a display name, domain, market, and scope. The market string must match a `market` in `entities.yml`. No scraper selector is required because discovery is domain-filtered through GDELT.
+Edit the two lists in `latin_america_monitor/sources.py`. Each entry contains a display name, domain, market, and scope. A country market must match the English country name in `entities.yml`. The market `Latin America` is the pan-regional case and uses the international query shape. No scraper selector is required because discovery is domain-filtered through GDELT.
 
-Known limits, skipped domains, and leaders still marked `verified: false` are in [`REVIEW.md`](REVIEW.md).
+Known limits, skipped domains, and leaders whose start date or status is still partial are in [`REVIEW.md`](REVIEW.md).

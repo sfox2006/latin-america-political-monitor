@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from .config import Settings
 from .models import Headline
 from .relations import classify, load_entities, place_terms, term_pool_for_market
-from .sources import INTERNATIONAL_PUBLICATIONS, LATIN_AMERICAN_PUBLICATIONS, match_publication
+from .sources import INTERNATIONAL_PUBLICATIONS, LATIN_AMERICAN_PUBLICATIONS, match_publication, publisher_name
 from .window import CoverageWindow
 
 LOGGER = logging.getLogger(__name__)
@@ -222,9 +222,16 @@ def build_queries(batch_size: int = 8, max_encoded_length: int = MAX_ENCODED_QUE
         raise ValueError("batch_size must be positive")
     if max_encoded_length < 1:
         raise ValueError("max_encoded_length must be positive")
-    known_markets = {country.market for country in load_entities().la_countries}
+    known_markets = {country.market for country in load_entities().countries}
     by_market: dict[str, list[str]] = {}
+    # Pan-regional desks have no home country to exclude. The three-clause
+    # international shape keeps domestic stories out of the index request.
+    pan_regional: list[str] = []
     for publication in LATIN_AMERICAN_PUBLICATIONS:
+        if publication.market == "Latin America":
+            if publication.domain not in pan_regional:
+                pan_regional.append(publication.domain)
+            continue
         if publication.market not in known_markets:
             raise ValueError(f"No entities.yml market for {publication.name} ({publication.market})")
         domains = by_market.setdefault(publication.market, [])
@@ -235,8 +242,12 @@ def build_queries(batch_size: int = 8, max_encoded_length: int = MAX_ENCODED_QUE
         pool = _sorted_terms(term_pool_for_market(market))
         for query in _cover_domains(domains, [pool], batch_size, max_encoded_length):
             queries.append((query, "Latin American press"))
+    international_domains = [publication.domain for publication in INTERNATIONAL_PUBLICATIONS]
+    for domain in pan_regional:
+        if domain not in international_domains:
+            international_domains.append(domain)
     for query in _cover_domains(
-        [publication.domain for publication in INTERNATIONAL_PUBLICATIONS],
+        international_domains,
         [_sorted_terms(place_terms()), _sorted_terms(term_pool_for_market(None))],
         batch_size,
         max_encoded_length,
@@ -435,7 +446,7 @@ def collect(window: CoverageWindow, settings: Settings) -> list[Headline]:
             key = _canonical_url(url)
             articles.setdefault(key, Headline(
                 title=re.sub(r"\s+", " ", title),
-                publisher=publication.name,
+                publisher=publisher_name(publication, url),
                 url=url,
                 seen_at=seen_at,
                 market=publication.market,

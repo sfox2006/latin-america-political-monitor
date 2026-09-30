@@ -1,15 +1,22 @@
 from datetime import datetime, timedelta, timezone
 
+from pathlib import Path
+
+import pytest
+import yaml
+
 from latin_america_monitor.relations import classify, load_entities
+
+_HEADLINES = yaml.safe_load(Path("tests/fixtures/test_headlines.yml").read_text(encoding="utf-8"))
 
 
 def test_exemplar_headlines_match_the_international_relations_filter():
     matched = {
-        "Brasil llama a consultas a su embajador en Argentina tras el 'convicto' de Milei a Lula": (1, "brazil"),
-        "EE.UU. cancela visas a ciudadanos de Ecuador, Bolivia, Colombia y Peru": (1, "ecuador"),
-        "Kast y el Escudo de las Americas de Trump": (1, "chile"),
-        "Nicaragua responde a la UE": (2, "nicaragua"),
-        "Colombia apela al FMI": (2, "colombia"),
+        "Brasil llama a consultas a su embajador en Argentina tras el 'convicto' de Milei a Lula": (1, "BR"),
+        "EE.UU. cancela visas a ciudadanos de Ecuador, Bolivia, Colombia y Peru": (1, "EC"),
+        "Kast y el Escudo de las Americas de Trump": (1, "CL"),
+        "Nicaragua responde a la UE": (1, "NI"),
+        "Colombia apela al FMI": (1, "CO"),
     }
     for headline, (tier, country) in matched.items():
         result = classify(headline)
@@ -31,28 +38,35 @@ def test_domestic_exemplar_headlines_are_dropped():
 def test_accent_and_case_variants_match():
     lower = classify("ee.uu. cancela visas a ciudadanos de ecuador, bolivia, colombia y perú")
     upper = classify("NICARAGUA RESPONDE A LA UE")
-    phrase = classify("nicaragua responde a la ue")
+    phrase = classify("Nicaragua responde a la UE")
     mixed = classify("MÉXICO y CHINA firman un tratado")
-    assert lower is not None and lower.tier == 1 and lower.country_id == "ecuador"
-    assert upper is not None and upper.tier == 2
-    assert phrase is not None and phrase.tier == 2
-    assert mixed is not None and mixed.tier == 1 and mixed.country_id == "mexico"
+    assert lower is not None and lower.tier == 1 and lower.country_id == "EC"
+    assert upper is not None and upper.tier == 1
+    assert phrase is not None and phrase.tier == 1 and phrase.country_id == "NI"
+    assert mixed is not None and mixed.tier == 1 and mixed.country_id == "MX"
+    # Spanish-press "EU" is the United States. English "EU" is the European Union.
+    # Lowercase "ue" is not an abbreviation.
+    spanish_eu = classify("EU investiga a Andy López Beltrán por crimen organizado")
+    english_eu = classify("Mexico and the EU sign a treaty")
+    assert spanish_eu is not None and spanish_eu.tier == 1 and spanish_eu.country_id == "MX"
+    assert english_eu is not None and english_eu.tier == 1 and english_eu.country_id == "MX"
+    assert classify("nicaragua responde a la ue") is None
 
 
 def test_portuguese_and_french_headlines_match():
     portuguese = classify("Brasil convoca o embaixador na Argentina depois que Milei chamou Lula de condenado")
     french = classify("Le Brésil rappelle son ambassadeur en Argentine")
-    assert portuguese is not None and portuguese.tier == 1 and portuguese.country_id == "brazil"
-    assert french is not None and french.tier == 1 and french.country_id == "brazil"
+    assert portuguese is not None and portuguese.tier == 1 and portuguese.country_id == "BR"
+    assert french is not None and french.tier == 1 and french.country_id == "BR"
 
 
 def test_two_leaders_from_different_countries_are_tier_one():
     result = classify("Milei y Lula conversan por telefono")
     assert result is not None
     assert result.tier == 1
-    assert result.country_id == "argentina"
+    assert result.country_id == "AR"
     paired = classify("Abelardo y Trump acuerdan visas")
-    assert paired is not None and paired.tier == 1 and paired.country_id == "colombia"
+    assert paired is not None and paired.tier == 1 and paired.country_id == "CO"
 
 
 def test_word_boundary_and_stop_list_traps_are_dropped():
@@ -68,7 +82,7 @@ def test_word_boundary_and_stop_list_traps_are_dropped():
     kept = classify("Mexico firma un tratado con Colombia")
     assert kept is not None and kept.tier == 1
     panama = classify("Panama firma un tratado con China")
-    assert panama is not None and panama.country_id == "panama"
+    assert panama is not None and panama.country_id == "PA"
 
 
 def test_domestic_story_that_merely_mentions_the_us_is_dropped():
@@ -84,12 +98,12 @@ def test_domestic_story_that_merely_mentions_the_us_is_dropped():
 def test_same_country_leader_without_an_outside_partner_is_dropped():
     assert classify("Keiko Fujimori aprueba alza del salario minimo") is None
     abroad = classify("Keiko Fujimori viaja a China")
-    assert abroad is not None and abroad.tier == 1 and abroad.country_id == "peru"
+    assert abroad is not None and abroad.tier == 1 and abroad.country_id == "PE"
 
 
 def test_malvinas_counts_as_the_united_kingdom():
     result = classify("Argentina protesta por las Malvinas")
-    assert result is not None and result.tier == 1 and result.country_id == "argentina"
+    assert result is not None and result.tier == 1 and result.country_id == "AR"
 
 
 def test_leaders_are_loaded_from_entities_yml_not_hard_coded():
@@ -99,16 +113,19 @@ def test_leaders_are_loaded_from_entities_yml_not_hard_coded():
         assert name not in relations
         assert name not in collector
     leaders = {leader.name: leader for leader in load_entities().leaders}
-    assert leaders["Keiko Fujimori"].verified is False
-    assert leaders["Keiko Fujimori"].country_id == "peru"
-    assert leaders["José Antonio Kast"].verified is False
-    assert leaders["Delcy Rodríguez"].verified is False
-    assert leaders["Abelardo de la Espriella"].verified is False
-    assert leaders["Javier Milei"].verified is True
+    keiko = leaders["Keiko Sofía Fujimori Higuchi"]
+    assert keiko.verified is True and keiko.status == "VERIFIED" and keiko.country_id == "PE"
+    sheinbaum = leaders["Claudia Sheinbaum Pardo"]
+    assert sheinbaum.verified is True and sheinbaum.since_verified is False
+    assert leaders["José Antonio Kast Rist"].status == "VERIFIED"
+    assert leaders["Delcy Rodríguez Gómez"].status == "VERIFIED"
+    assert leaders["Abelardo de la Espriella"].status == "VERIFIED"
+    assert leaders["Javier Gerardo Milei"].verified is True
     assert leaders["Luiz Inácio Lula da Silva"].verified is True
-    assert leaders["Donald Trump"].verified is True
+    assert leaders["Donald J. Trump"].verified is True
     assert leaders["Marco Rubio"].verified is True
-    assert any(leader.verified is False for leader in leaders.values())
+    assert any(leader.status == "PARTIAL" for leader in leaders.values())
+    assert all(leader.status != "UNVERIFIED" for leader in leaders.values())
 
 
 def test_pan_regional_headline_is_kept_without_a_specific_country():
@@ -116,3 +133,34 @@ def test_pan_regional_headline_is_kept_without_a_specific_country():
     assert result is not None and result.tier == 1
     assert result.country_id == "latin_america"
     assert result.region_display == "AMÉRICA LATINA"
+
+
+def _labelled_cases():
+    cases = []
+    for item in _HEADLINES["should_match"] + _HEADLINES["should_drop"]:
+        cases.append(pytest.param(item["headline"], item["expected"], id=item["id"]))
+    return cases
+
+
+@pytest.mark.parametrize(("headline", "expected"), _labelled_cases())
+def test_labelled_headlines(headline, expected):
+    result = classify(headline)
+    got = result.tier if result else "drop"
+    assert got == expected
+
+
+def test_borderline_headlines_are_kept_in_the_fixture_without_an_assertion():
+    rows = _HEADLINES["borderline"]
+    assert len(rows) >= 15
+    assert {row["id"] for row in rows} >= {"T01", "T07", "T13", "T15", "T18", "T20", "T23", "T35", "T37", "T40", "T43", "T47", "T50", "T54", "T56"}
+    assert all(row.get("question_for_sam") for row in rows)
+
+
+def test_legislative_sanciona_and_sports_fixtures_are_dropped():
+    assert classify("Lula sanciona ley de salario minimo") is None
+    kept = classify("Brasil anuncia sanciones contra el sector exportador")
+    assert kept is not None and kept.tier == 2
+    assert classify("Chile vs Argentina: final de la Copa") is None
+    assert classify("Brasil derrota a Argentina en las eliminatorias") is None
+    # "partido" is a political party, so it does not drop a diplomatic headline.
+    assert classify("El partido de Lula y Trump acuerdan aranceles") is not None

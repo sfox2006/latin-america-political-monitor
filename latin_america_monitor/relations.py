@@ -1,7 +1,9 @@
 """Headline filter for Latin American international relations.
 
-Countries, leaders, aliases, and international-relations terms live in
-``entities.yml``. This module only implements matching.
+Countries, leaders, aliases, and terms live in ``entities.yml``. This module
+only matches them. Behaviour follows that file's tier rules, with two
+tightening rules the labelled set does not cover: sports headlines are
+dropped, and the legislative verb ``sanciona`` is not a sanctions term.
 """
 
 from __future__ import annotations
@@ -16,12 +18,12 @@ import yaml
 
 from .models import Headline
 
-_APOSTROPHES = {"'", "’", "´", "`", "‘"}
-# US$ / USD are currency markers, not the United States.
-_CURRENCY = re.compile(
-    r"(?<![A-Za-z0-9])(?:U\.S\.|US)\s?\$|(?<![A-Za-z0-9])USD(?![A-Za-z0-9])",
-    re.IGNORECASE,
-)
+# Enough function words to tell Spanish-press "EU" (Estados Unidos) from English "EU".
+_ENGLISH_WORDS = {"the", "of", "to", "and", "in", "for", "with", "on", "that", "its", "threatens", "over", "after", "as", "will", "says"}
+_FRENCH_WORDS = {"le", "la", "les", "des", "du", "est", "pour", "avec", "sur"}
+_PORTUGUESE_WORDS = {"não", "nao", "do", "da", "dos", "das", "para", "com", "uma", "é", "está", "pelo", "pela", "sobre", "brasil", "chanceler", "foi"}
+_SPANISH_WORDS = {"el", "los", "las", "del", "por", "una"}
+_CURRENCY = re.compile(r"(?<!\w)(?:US|U\.S\.)\s?\$|(?<!\w)USD(?!\w)", re.IGNORECASE)
 
 
 def entities_path() -> Path:
@@ -29,31 +31,28 @@ def entities_path() -> Path:
 
 
 @dataclass(frozen=True)
-class Region:
-    id: str
-    display: str
-    order: int
-
-
-@dataclass(frozen=True)
 class Leader:
     name: str
     role: str
-    verified: bool
+    status: str
+    since_verified: bool | None
     country_id: str
-    gdelt: str | None
     aliases: tuple[str, ...]
+
+    @property
+    def verified(self) -> bool:
+        return self.status == "VERIFIED"
 
 
 @dataclass(frozen=True)
 class Country:
     id: str
     display: str
-    region_id: str
-    market: str | None
+    region_display: str
+    region_order: int
+    market: str
     order: int
-    query_names: tuple[str, ...]
-    leaders: tuple[Leader, ...]
+    english_name: str
 
 
 @dataclass(frozen=True)
@@ -80,258 +79,238 @@ class Block:
 
 
 @dataclass(frozen=True)
-class _Pattern:
-    folded: re.Pattern[str] | None
-    original: re.Pattern[str] | None
+class _Alias:
+    pattern: re.Pattern[str]
+    group: str
+    weak: bool
     kind: str
-    entity_id: str
-    country_id: str | None
+    languages: frozenset[str] | None
+    case_sensitive: bool
 
 
 @dataclass(frozen=True)
 class _Hit:
+    group: str
+    weak: bool
     kind: str
-    entity_id: str
-    country_id: str | None
     start: int
     end: int
 
 
 @dataclass(frozen=True)
 class EntityIndex:
-    regions: dict[str, Region]
-    la_countries: tuple[Country, ...]
-    foreign_countries: tuple[Country, ...]
+    countries: tuple[Country, ...]
     leaders: tuple[Leader, ...]
-    gdelt_terms: tuple[str, ...]
-    regional_gdelt: tuple[str, ...]
-    regional_display: str
-    stop_patterns: tuple[re.Pattern[str], ...]
-    patterns: tuple[_Pattern, ...]
     country_by_id: dict[str, Country]
+    latam: frozenset[str]
+    masks: tuple[re.Pattern[str], ...]
+    aliases: tuple[_Alias, ...]
+    regional: tuple[tuple[re.Pattern[str], bool], ...]
+    ir_strong: tuple[tuple[str, re.Pattern[str]], ...]
+    ir_weak: tuple[tuple[str, re.Pattern[str]], ...]
+    sports: tuple[re.Pattern[str], ...]
+    not_ir_tokens: frozenset[str]
+    gdelt_terms: tuple[str, ...]
+    gdelt_leaders: dict[str, tuple[str, ...]]
+    gdelt_regional: tuple[str, ...]
+    regional_display: str
 
 
-def _fold_with_map(text: str) -> tuple[str, list[int]]:
-    chars: list[str] = []
-    mapping: list[int] = []
-    for index, char in enumerate(text):
-        if char in _APOSTROPHES:
-            chars.append(" ")
-            mapping.append(index)
-            continue
-        for base in unicodedata.normalize("NFKD", char):
-            if unicodedata.combining(base):
+def _fold(text: str, *, lower: bool) -> str:
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return text.casefold() if lower else text
+
+
+def _alias_pattern(alias: str, *, case_sensitive: bool) -> re.Pattern[str]:
+    folded = _fold(alias, lower=not case_sensitive)
+    trailing_wild = folded.endswith("*")
+    folded = folded.rstrip("*")
+    body = re.escape(folded).replace(r"\ ", r"\s+").replace(r"\*", r"\w*")
+    body = body.replace(r"\(", "(").replace(r"\)", ")").replace(r"\|", "|").replace(r"\?", "?")
+    tail = r"\w*" if trailing_wild else r"(?!\w)"
+    flags = 0 if case_sensitive else re.IGNORECASE
+    return re.compile(rf"(?<!\w){body}{tail}", flags)
+
+
+def _strings(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        items: list[str] = []
+        for entry in value.values():
+            items.extend(_strings(entry))
+        return items
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str) and item.strip()]
+    return []
+
+
+def _language(headline: str) -> str:
+    words = set(re.findall(r"\w+", headline.lower()))
+    if len(words & _ENGLISH_WORDS) >= 2:
+        return "en"
+    if len(words & _FRENCH_WORDS) >= 2:
+        return "fr"
+    if len(words & _PORTUGUESE_WORDS) >= 2 and not (words & _SPANISH_WORDS):
+        return "pt"
+    return "es"
+
+
+def _mostly_uppercase(headline: str) -> bool:
+    letters = [char for char in headline if char.isalpha()]
+    if not letters:
+        return False
+    return sum(char.isupper() for char in letters) / len(letters) > 0.70
+
+
+def _build(raw: dict) -> EntityIndex:
+    region_order = {name: index + 1 for index, name in enumerate(raw["regions"])}
+    country_order = {code: index for name, codes in raw["regions"].items() for index, code in enumerate(codes)}
+    countries: list[Country] = []
+    latam: set[str] = set()
+    masks: list[tuple[int, re.Pattern[str]]] = []
+    aliases: list[_Alias] = []
+    leaders: list[Leader] = []
+
+    def add_mask(phrase: str) -> None:
+        masks.append((len(_fold(phrase, lower=True)), _alias_pattern(phrase, case_sensitive=False)))
+
+    for phrase in _strings(raw.get("global_stoplist_phrases")) + _strings(raw.get("out_of_entity_names")):
+        add_mask(phrase)
+
+    def add_alias(alias: str, group: str, kind: str, weak: bool, case_sensitive: bool, languages: frozenset[str] | None) -> None:
+        aliases.append(_Alias(_alias_pattern(alias, case_sensitive=case_sensitive), group, weak, kind, languages, case_sensitive))
+
+    def add_many(values: object, group: str, kind: str, weak_set: set[str], case_set: set[str], languages: dict | None = None) -> None:
+        for alias in _strings(values):
+            alias = re.sub(r"\s*\(weak\)$", "", alias)
+            only = None
+            if languages and alias in languages:
+                only = frozenset(languages[alias])
+            add_alias(alias, group, kind, alias in weak_set, alias in case_set, only)
+
+    for entry in raw["countries"]:
+        code = entry["code"]
+        latam.add(code)
+        region = entry["region"]
+        english = entry["aliases"]["en"][0]
+        countries.append(Country(
+            id=code,
+            display=entry["name"].upper(),
+            region_display=region.upper(),
+            region_order=region_order[region],
+            market=english,
+            order=country_order[code],
+            english_name=english,
+        ))
+        for phrase in entry.get("stoplist_phrases") or []:
+            add_mask(phrase)
+        weak = set(entry.get("weak_aliases") or [])
+        case_set = set(entry.get("case_sensitive_aliases") or [])
+        add_many(entry.get("aliases"), code, "name", weak, case_set)
+        add_many(entry.get("demonyms"), code, "demonym", weak, case_set)
+        add_many(entry.get("metonyms"), code, "metonym", weak, case_set)
+
+    for code, roles in raw["leaders"].items():
+        for role, people in roles.items():
+            for person in people or []:
+                since = person.get("since_verified")
+                leaders.append(Leader(
+                    name=person["name"],
+                    role=person.get("title") or role,
+                    status=person.get("status") or "UNVERIFIED",
+                    since_verified=since if isinstance(since, bool) else None,
+                    country_id=code,
+                    aliases=tuple(_strings(person.get("aliases")) + _strings(person.get("weak_aliases"))),
+                ))
+                if person.get("status") == "UNVERIFIED":
+                    continue
+                weak = set(person.get("weak_aliases") or [])
+                case_set = set(person.get("case_sensitive_aliases") or [])
+                add_many(_strings(person.get("aliases")) + list(weak), code, "leader", weak, case_set)
+
+    foreign = raw["foreign_entities"]
+    for entry in foreign["countries"] + foreign["institutions"]:
+        group = entry.get("group") or entry["id"]
+        for phrase in entry.get("stoplist_phrases") or []:
+            add_mask(phrase)
+        weak = set(entry.get("weak_aliases") or [])
+        case_set = set(entry.get("case_sensitive_aliases") or [])
+        add_many(entry.get("aliases"), group, "foreign", weak, case_set, entry.get("lang_only_aliases"))
+        for person in entry.get("people") or []:
+            if person.get("status") == "UNVERIFIED":
                 continue
-            if base.isalpha() or base.isdigit() or base == ".":
-                chars.append(base.lower())
-            else:
-                chars.append(" ")
-            mapping.append(index)
-    return "".join(chars), mapping
+            implied = person.get("implies_country") or group
+            person_case = set(person.get("case_sensitive_aliases") or [])
+            person_aliases = _strings(person.get("aliases"))
+            add_many(person_aliases, implied, "foreign", set(), person_case)
+            if person.get("implies_country") and person_aliases:
+                add_alias(person_aliases[0], group, "foreign", False, person_aliases[0] in person_case, None)
+            leaders.append(Leader(
+                name=person["name"],
+                role=person.get("title") or entry["id"],
+                status=person.get("status") or "UNVERIFIED",
+                since_verified=person.get("since_verified") if isinstance(person.get("since_verified"), bool) else None,
+                country_id=implied,
+                aliases=tuple(person_aliases),
+            ))
+        if entry["id"] == "USMCA":
+            for alias in _strings(entry.get("aliases")):
+                for extra in ("MX", "US", "CA"):
+                    add_alias(alias, extra, "foreign", False, True, None)
 
+    for dispute in raw["disputes"]:
+        for term in dispute["terms"]:
+            for group in dispute["implies"]:
+                add_alias(term, group, "dispute", bool(dispute["weak"]), False, None)
 
-def _fold_key(text: str) -> str:
-    folded, _ = _fold_with_map(text)
-    return re.sub(r"\s+", " ", folded).strip()
+    regional_case = set(raw["regional_terms"].get("case_sensitive") or [])
+    regional: list[tuple[re.Pattern[str], bool]] = []
+    for language in ("es", "pt", "en", "fr"):
+        for alias in raw["regional_terms"][language]:
+            sensitive = alias in regional_case
+            regional.append((_alias_pattern(alias, case_sensitive=sensitive), sensitive))
 
+    ir_strong: list[tuple[str, re.Pattern[str]]] = []
+    ir_weak: list[tuple[str, re.Pattern[str]]] = []
+    for language in ("es", "pt", "en", "fr"):
+        terms = raw["ir_terms"][language]
+        ir_strong.extend((term, _alias_pattern(term, case_sensitive=False)) for term in terms["strong"])
+        ir_weak.extend((term, _alias_pattern(term, case_sensitive=False)) for term in terms["weak"])
 
-def _phrase_pattern(key: str) -> re.Pattern[str]:
-    parts = [re.escape(part) for part in key.split(" ") if part]
-    if not parts:
-        raise ValueError("empty match phrase")
-    body = r"\s+".join(parts)
-    return re.compile(rf"(?<![a-z0-9]){body}(?![a-z0-9])")
-
-
-def _abbrev_pattern(token: str, *, ignore_case: bool) -> re.Pattern[str]:
-    letters = [char for char in token if char.isalnum()]
-    if len(letters) < 2:
-        raise ValueError(f"abbreviation {token!r} is too short")
-    body = r"\.?\s?".join(re.escape(char) for char in letters) + r"\.?"
-    flags = re.IGNORECASE if ignore_case else 0
-    # Do not treat a longer acronym (U.S.A.) as the shorter one (U.S.).
-    return re.compile(
-        rf"(?<![A-Za-z0-9])(?:{body})(?![A-Za-z0-9])(?!\.\s?[A-Za-z])",
-        flags,
+    sports = tuple(
+        _alias_pattern(term, case_sensitive=False)
+        for language in raw["out_of_scope_hint_terms"].values()
+        for term in language
     )
-
-
-def _as_strings(value: object, label: str) -> tuple[str, ...]:
-    if value is None:
-        return ()
-    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
-        raise ValueError(f"{label} must be a list of strings")
-    return tuple(item.strip() for item in value)
-
-
-def _abbreviations(value: object, label: str) -> tuple[tuple[str, bool], ...]:
-    if value is None:
-        return ()
-    if not isinstance(value, list):
-        raise ValueError(f"{label} must be a list")
-    parsed: list[tuple[str, bool]] = []
-    for item in value:
-        if isinstance(item, str):
-            parsed.append((item.strip(), False))
-            continue
-        if not isinstance(item, dict) or "text" not in item:
-            raise ValueError(f"{label} entries must be strings or {{text, ignore_case}}")
-        text = item["text"]
-        if not isinstance(text, str) or not text.strip():
-            raise ValueError(f"{label} text must be a string")
-        ignore_case = item.get("ignore_case", False)
-        if not isinstance(ignore_case, bool):
-            raise ValueError(f"{label} ignore_case must be a boolean")
-        parsed.append((text.strip(), ignore_case))
-    return tuple(parsed)
-
-
-def _leader(raw: object, country_id: str) -> Leader:
-    if not isinstance(raw, dict):
-        raise ValueError(f"leader of {country_id} must be a mapping")
-    name = raw.get("name")
-    role = raw.get("role")
-    verified = raw.get("verified")
-    if not isinstance(name, str) or not name.strip():
-        raise ValueError(f"leader of {country_id} needs a name")
-    if not isinstance(role, str) or not role.strip():
-        raise ValueError(f"leader {name} needs a role")
-    if not isinstance(verified, bool):
-        raise ValueError(f"leader {name} needs verified: true or false")
-    gdelt = raw.get("gdelt")
-    if gdelt is not None and (not isinstance(gdelt, str) or not gdelt.strip()):
-        raise ValueError(f"leader {name} has an invalid gdelt token")
-    return Leader(
-        name=name.strip(),
-        role=role.strip(),
-        verified=verified,
-        country_id=country_id,
-        gdelt=gdelt.strip() if isinstance(gdelt, str) else None,
-        aliases=_as_strings(raw.get("aliases"), f"{name} aliases"),
-    )
-
-
-def _add_folded(patterns: list[_Pattern], seen: set[tuple[object, ...]], kind: str, entity_id: str, country_id: str | None, text: str) -> None:
-    key = _fold_key(text)
-    if not key:
-        return
-    signature = ("folded", kind, country_id, key)
-    if signature in seen:
-        return
-    seen.add(signature)
-    patterns.append(_Pattern(_phrase_pattern(key), None, kind, entity_id, country_id))
-
-
-def _add_abbrev(patterns: list[_Pattern], seen: set[tuple[object, ...]], kind: str, entity_id: str, country_id: str | None, text: str, ignore_case: bool) -> None:
-    signature = ("abbrev", kind, country_id, text.upper(), ignore_case)
-    if signature in seen:
-        return
-    seen.add(signature)
-    patterns.append(_Pattern(None, _abbrev_pattern(text, ignore_case=ignore_case), kind, entity_id, country_id))
-
-
-def _build(raw: object) -> EntityIndex:
-    if not isinstance(raw, dict):
-        raise ValueError("entities.yml must be a mapping")
-    regions: dict[str, Region] = {}
-    for entry in raw.get("regions", []):
-        if not isinstance(entry, dict):
-            raise ValueError("region entries must be mappings")
-        region = Region(str(entry["id"]), str(entry["display"]), int(entry["order"]))
-        if region.id in regions:
-            raise ValueError(f"duplicate region {region.id}")
-        regions[region.id] = region
-    regional = raw.get("regional")
-    if not isinstance(regional, dict):
-        raise ValueError("regional block is required")
-    regional_display = str(regional["display"])
-    regional_gdelt = _as_strings(regional.get("gdelt"), "regional gdelt")
-
-    patterns: list[_Pattern] = []
-    seen: set[tuple[object, ...]] = set()
-    for alias in _as_strings(regional.get("aliases"), "regional aliases"):
-        _add_folded(patterns, seen, "la_region", "latin_america", None, alias)
-
-    def consume_country(entry: object, *, foreign: bool) -> Country:
-        if not isinstance(entry, dict):
-            raise ValueError("country entries must be mappings")
-        country_id = entry.get("id")
-        display = entry.get("display", country_id if foreign else None)
-        if not isinstance(country_id, str) or not country_id.strip():
-            raise ValueError("country needs an id")
-        if not foreign:
-            region_id = entry.get("region")
-            market = entry.get("market")
-            if not isinstance(region_id, str) or region_id not in regions:
-                raise ValueError(f"{country_id} has an unknown region")
-            if not isinstance(market, str) or not market.strip():
-                raise ValueError(f"{country_id} needs a market")
-            if not isinstance(display, str) or not display.strip():
-                raise ValueError(f"{country_id} needs a display name")
-            order = entry.get("order")
-            if not isinstance(order, int):
-                raise ValueError(f"{country_id} needs an integer order")
-            query_names = _as_strings(entry.get("query_names"), f"{country_id} query_names")
-            if not query_names:
-                raise ValueError(f"{country_id} needs query_names")
-        else:
-            region_id = ""
-            market = None
-            display = country_id
-            order = 0
-            query_names = ()
-        leaders = tuple(_leader(item, country_id) for item in entry.get("leaders", []))
-        kind = "foreign_country" if foreign else "la_country"
-        leader_kind = "foreign_leader" if foreign else "la_leader"
-        for alias in _as_strings(entry.get("aliases"), f"{country_id} aliases"):
-            _add_folded(patterns, seen, kind, country_id, None if foreign else country_id, alias)
-        for text, ignore_case in _abbreviations(entry.get("abbreviations"), f"{country_id} abbreviations"):
-            _add_abbrev(patterns, seen, kind, country_id, None if foreign else country_id, text, ignore_case)
-        for leader in leaders:
-            for alias in leader.aliases:
-                _add_folded(patterns, seen, leader_kind, leader.name, country_id, alias)
-        return Country(
-            id=country_id,
-            display=display.strip() if isinstance(display, str) else country_id,
-            region_id=region_id,
-            market=market.strip() if isinstance(market, str) else None,
-            order=order,
-            query_names=query_names,
-            leaders=leaders,
-        )
-
-    la_countries = tuple(consume_country(entry, foreign=False) for entry in raw.get("latin_america", []))
-    foreign_countries = tuple(consume_country(entry, foreign=True) for entry in raw.get("foreign", []))
-    ids = [country.id for country in la_countries]
-    if len(ids) != len(set(ids)):
-        raise ValueError("duplicate Latin American country id")
-    for entry in raw.get("ir_terms", []):
-        if not isinstance(entry, dict):
-            raise ValueError("ir_terms entries must be mappings")
-        for alias in _as_strings(entry.get("aliases"), "ir alias"):
-            _add_folded(patterns, seen, "ir", "ir", None, alias)
-        for text, ignore_case in _abbreviations(entry.get("abbreviations"), "ir abbreviations"):
-            _add_abbrev(patterns, seen, "ir", "ir", None, text, ignore_case)
-
-    stop_keys = sorted({_fold_key(phrase) for phrase in _as_strings(raw.get("stop_phrases"), "stop_phrases")}, key=len, reverse=True)
-    leaders = tuple(leader for country in (*la_countries, *foreign_countries) for leader in country.leaders)
+    gdelt = raw["gdelt"]
     return EntityIndex(
-        regions=regions,
-        la_countries=la_countries,
-        foreign_countries=foreign_countries,
-        leaders=leaders,
-        gdelt_terms=_as_strings(raw.get("gdelt_terms"), "gdelt_terms"),
-        regional_gdelt=regional_gdelt,
-        regional_display=regional_display,
-        stop_patterns=tuple(_phrase_pattern(key) for key in stop_keys if key),
-        patterns=tuple(patterns),
-        country_by_id={country.id: country for country in la_countries},
+        countries=tuple(countries),
+        leaders=tuple(leaders),
+        country_by_id={country.id: country for country in countries},
+        latam=frozenset(latam),
+        masks=tuple(pattern for _, pattern in sorted(masks, key=lambda item: -item[0])),
+        aliases=tuple(aliases),
+        regional=tuple(regional),
+        ir_strong=tuple(ir_strong),
+        ir_weak=tuple(ir_weak),
+        sports=sports,
+        not_ir_tokens=frozenset(_fold(token, lower=True) for token in gdelt.get("not_ir_tokens", [])),
+        gdelt_terms=tuple(gdelt["terms"]),
+        gdelt_leaders={code: tuple(tokens) for code, tokens in gdelt["leaders"].items()},
+        gdelt_regional=tuple(gdelt["regional"]),
+        regional_display="AMÉRICA LATINA",
     )
 
 
 @lru_cache(maxsize=1)
 def load_entities() -> EntityIndex:
     raw = yaml.safe_load(entities_path().read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("entities.yml must be a mapping")
     return _build(raw)
 
 
@@ -339,131 +318,142 @@ def _dedupe(values: list[str]) -> list[str]:
     seen: set[str] = set()
     unique: list[str] = []
     for value in values:
-        if not value or value in seen:
-            continue
-        seen.add(value)
-        unique.append(value)
+        if value and value not in seen:
+            seen.add(value)
+            unique.append(value)
     return unique
 
 
 def term_pool_for_market(market: str | None) -> list[str]:
-    """GDELT OR-terms for one catalogue market.
+    """GDELT terms for one catalogue market.
 
-    ``market=None`` is the international pool: IR vocabulary, foreign leaders,
-    and Latin American leader surnames. A regional market additionally hears
-    every other Latin American country, but not its own names, so a domestic
-    story that only mentions home is not requested.
+    ``None`` is the international pool (IR vocabulary and leader tokens).
+    A country market also hears every other Latin American country, but not
+    its own name or leaders.
     """
     index = load_entities()
+    home = next((country.id for country in index.countries if market and country.market == market), None)
     terms = list(index.gdelt_terms)
-    for country in index.la_countries:
-        excluded = market is not None and country.market == market
-        if market is not None and not excluded:
-            terms.extend(country.query_names)
-        if not excluded:
-            terms.extend(leader.gdelt for leader in country.leaders if leader.gdelt)
-    for country in index.foreign_countries:
-        terms.extend(leader.gdelt for leader in country.leaders if leader.gdelt)
+    if market is not None:
+        for country in index.countries:
+            if country.id == home:
+                continue
+            terms.append(country.english_name)
+            terms.extend(index.gdelt_leaders.get(country.id, ()))
+    for code, tokens in index.gdelt_leaders.items():
+        if code in index.latam and market is not None:
+            continue
+        if code == home:
+            continue
+        terms.extend(tokens)
     return _dedupe(terms)
 
 
 def place_terms() -> list[str]:
     """Latin American place names required on international-wire queries."""
     index = load_entities()
-    terms: list[str] = []
-    for country in index.la_countries:
-        terms.extend(country.query_names)
-    terms.extend(index.regional_gdelt)
-    return _dedupe(terms)
+    return _dedupe([country.english_name for country in index.countries] + list(index.gdelt_regional))
 
 
-def _resolve_overlaps(hits: list[_Hit]) -> list[_Hit]:
-    chosen: list[_Hit] = []
-    for hit in sorted(hits, key=lambda item: (-(item.end - item.start), item.start)):
-        if any(hit.start < other.end and other.start < hit.end for other in chosen):
+def _blank_currency(headline: str) -> str:
+    return _CURRENCY.sub(lambda match: " " * len(match.group(0)), headline)
+
+
+def _sports(headline: str) -> bool:
+    folded = _fold(headline, lower=True)
+    return any(pattern.search(folded) for pattern in load_entities().sports)
+
+
+def _resolve(hits: list[_Hit]) -> list[_Hit]:
+    """Keep the longest span when two aliases overlap, so a longer official name wins."""
+    kept: list[_Hit] = []
+    for hit in sorted(hits, key=lambda item: (-(item.end - item.start), item.start, item.group)):
+        shorter = (hit.end - hit.start)
+        if any(hit.start < other.end and other.start < hit.end and shorter < (other.end - other.start) for other in kept):
             continue
-        chosen.append(hit)
-    return sorted(chosen, key=lambda item: item.start)
+        kept.append(hit)
+    return kept
 
 
-def _match(title: str) -> list[_Hit]:
-    index = load_entities()
-    masked = _CURRENCY.sub(lambda match: " " * len(match.group(0)), title)
-    folded, mapping = _fold_with_map(masked)
-    if not mapping:
+def _search_alias(alias: _Alias, text: str, language: str, uppercase: bool) -> list[_Hit]:
+    if alias.languages and language not in alias.languages:
         return []
-    folded_chars = list(folded)
-    original_chars = list(masked)
-    for pattern in index.stop_patterns:
-        for match in pattern.finditer("".join(folded_chars)):
-            for index_ in range(match.start(), match.end()):
-                folded_chars[index_] = " "
-                original_chars[mapping[index_]] = " "
-    folded_text = "".join(folded_chars)
-    original_text = "".join(original_chars)
-    hits: list[_Hit] = []
-    for pattern in index.patterns:
-        if pattern.folded is not None:
-            for match in pattern.folded.finditer(folded_text):
-                start = mapping[match.start()]
-                end = mapping[match.end() - 1] + 1
-                hits.append(_Hit(pattern.kind, pattern.entity_id, pattern.country_id, start, end))
-        if pattern.original is not None:
-            for match in pattern.original.finditer(original_text):
-                hits.append(_Hit(pattern.kind, pattern.entity_id, pattern.country_id, match.start(), match.end()))
-    return _resolve_overlaps(hits)
+    pattern = alias.pattern
+    if alias.case_sensitive and uppercase:
+        pattern = re.compile(pattern.pattern, pattern.flags | re.IGNORECASE)
+    return [
+        _Hit(alias.group, alias.weak, alias.kind, match.start(), match.end())
+        for match in pattern.finditer(text)
+    ]
 
 
 def classify(title: str) -> Classification | None:
     """Tier 1 pairs a Latin American country or leader with a different one.
 
-    Tier 2 is one Latin American entity plus an international-relations term.
-    Anything else, including a domestic story, is dropped.
+    Tier 2 is exactly one Latin American country plus a strong international-relations
+    term (or two weak terms on a country name). Sports fixtures and domestic
+    headlines are dropped.
     """
-    hits = _match(title)
-    if not hits:
-        return None
-    la_ids: list[str] = []
-    has_region = False
-    has_foreign = False
-    has_ir = False
-    for hit in hits:
-        if hit.kind in {"la_country", "la_leader"} and hit.country_id:
-            if hit.country_id not in la_ids:
-                la_ids.append(hit.country_id)
-        elif hit.kind == "la_region":
-            has_region = True
-        elif hit.kind in {"foreign_country", "foreign_leader"}:
-            has_foreign = True
-        elif hit.kind == "ir":
-            has_ir = True
-    if not la_ids and not has_region:
-        return None
-    if len(la_ids) >= 2 or (la_ids or has_region) and has_foreign:
-        tier = 1
-    elif has_ir:
-        tier = 2
-    else:
+    if not title or not title.strip() or _sports(title):
         return None
     index = load_entities()
-    if la_ids:
-        country = index.country_by_id[la_ids[0]]
-        region = index.regions[country.region_id]
+    language = _language(title)
+    uppercase = _mostly_uppercase(title)
+    text = _fold(_blank_currency(title), lower=False)
+    for pattern in index.masks:
+        text = pattern.sub(lambda match: " " * len(match.group(0)), text)
+    hits = _resolve([
+        hit
+        for alias in index.aliases
+        for hit in _search_alias(alias, text, language, uppercase)
+    ])
+    strong_groups = {hit.group for hit in hits if not hit.weak}
+    admitted = [hit for hit in hits if not hit.weak or (strong_groups - {hit.group})]
+    groups = {hit.group for hit in admitted}
+    latam = {group for group in groups if group in index.latam}
+    other = groups - latam
+    folded = _fold(text, lower=True)
+    strong_ir = []
+    for term, pattern in index.ir_strong:
+        if any(_fold(match.group(0), lower=True) not in index.not_ir_tokens for match in pattern.finditer(folded)):
+            strong_ir.append(term)
+    weak_surfaces: set[str] = set()
+    for _, pattern in index.ir_weak:
+        weak_surfaces.update(_fold(match.group(0), lower=True) for match in pattern.finditer(folded))
+    regional = any(
+        (re.compile(pattern.pattern, pattern.flags | re.IGNORECASE) if uppercase and sensitive else pattern).search(text)
+        for pattern, sensitive in index.regional
+    )
+    tier: int | None = None
+    if latam == {"PR"} and other and other <= {"US"}:
+        tier = 2 if strong_ir else None
+    elif latam and (other or len(latam) >= 2):
+        tier = 1
+    elif regional and other and not latam:
+        tier = 1
+    elif len(latam) == 1 and not other:
+        named = any(hit.kind == "name" and not hit.weak and hit.group in latam for hit in admitted)
+        if strong_ir or (named and len(weak_surfaces) >= 2):
+            tier = 2
+    if tier is None:
+        return None
+    latam_hits = [hit for hit in admitted if hit.group in index.latam]
+    if latam_hits:
+        country = index.country_by_id[min(latam_hits, key=lambda hit: (hit.start, hit.group)).group]
         return Classification(
             tier=tier,
-            region_id=region.id,
-            region_display=region.display,
-            region_order=region.order,
+            region_id=country.region_display,
+            region_display=country.region_display,
+            region_order=country.region_order,
             country_id=country.id,
             country_display=country.display,
             country_order=country.order,
         )
-    region = index.regions["americas"]
     return Classification(
         tier=tier,
-        region_id=region.id,
-        region_display=region.display,
-        region_order=region.order,
+        region_id="latin_america",
+        region_display=index.regional_display,
+        region_order=0,
         country_id="latin_america",
         country_display=index.regional_display,
         country_order=0,

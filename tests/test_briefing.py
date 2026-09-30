@@ -13,7 +13,7 @@ def _item(title, publisher, url, market="Mexico", scope="latin_america", domain=
 def test_briefing_is_publisher_headline_and_link_by_region():
     end = datetime(2026, 9, 29, 11, tzinfo=timezone.utc)
     mexico = _item("Mexico y China firman un tratado", "Proceso", "https://proceso.com.mx/story", end=end)
-    argentina_tier2 = _item("Argentina apela al FMI", "La Nación", "https://lanacion.com.ar/fmi", market="Argentina", domain="lanacion.com.ar", hours_ago=1, end=end)
+    argentina_tier2 = _item("Argentina convoca a su embajador", "La Nación", "https://lanacion.com.ar/fmi", market="Argentina", domain="lanacion.com.ar", hours_ago=1, end=end)
     argentina_tier1 = _item("Milei y Trump acuerdan un tratado", "DW", "https://dw.com/milei", market="International", scope="international", domain="dw.com", hours_ago=5, end=end)
     domestic = _item("Keiko Fujimori aprueba alza del salario minimo", "El Comercio", "https://elcomercio.pe/salario", market="Peru", domain="elcomercio.pe", end=end)
     report = build_markdown([argentina_tier2, domestic, argentina_tier1, mexico])
@@ -22,7 +22,7 @@ def test_briefing_is_publisher_headline_and_link_by_region():
     assert "Proceso: Mexico y China firman un tratado" in report
     assert "https://proceso.com.mx/story" in report
     assert "DW: Milei y Trump acuerdan un tratado" in report
-    assert report.index("Milei y Trump") < report.index("Argentina apela al FMI")
+    assert report.index("Milei y Trump") < report.index("Argentina convoca a su embajador")
     assert "salario" not in report
     assert "Results:" not in report
     assert "First indexed" not in report
