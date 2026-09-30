@@ -174,5 +174,18 @@ def test_legislative_signing_sports_and_pageants():
         "Trump sanciona a Petro",
         "EEUU sanciona a funcionarios venezolanos",
         "El partido de Lula y Trump acuerdan aranceles",
+        "Milei y Lula se enfrentan en la final de la Copa",
+        "Lula y Trump asisten a un partido durante visita de Estado",
+        "Copa: Trump y Sheinbaum se reunen antes del Mundial",
+        "Partido de Petro rompe con Milei",
     ):
         assert classify(headline) is not None, headline
+    for headline in (
+        "Amistoso Uruguay-Paraguay termina 1-1",
+        "El entrenador Lula Da Silva dirige a Brasil ante Argentina",
+        "Gol de Trump en Argentina vs Chile",
+    ):
+        assert classify(headline) is None, headline
+    # Owner judgment, currently dropped. Listed on the pull request, not reclassified here.
+    assert classify("Brasil vence a Argentina en la Copa; Milei critica al arbitro") is None
+    assert classify("Maduro celebra triunfo de Venezuela sobre Colombia en eliminatorias") is None

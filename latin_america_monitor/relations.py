@@ -1,10 +1,10 @@
 """Headline filter for Latin American international relations.
 
 Countries, leaders, aliases, and terms live in ``entities.yml``. This module
-only matches them. Law-signing phrases are masked before matching. Sports and
-pageant headlines are dropped after tiering, except when leaders from
-different countries (or a leader and a foreign entity) are both named, or a
-bloc such as Mercosur is present.
+only matches them. Law-signing phrases are masked before matching. Sports
+headlines are dropped after that match: a hard term (including a pageant),
+two distinct soft terms, or a versus marker. A leader override or a strong
+international-relations term in ``sports_rule`` keeps the headline.
 """
 
 from __future__ import annotations
@@ -25,6 +25,25 @@ _FRENCH_WORDS = {"le", "la", "les", "des", "du", "est", "pour", "avec", "sur"}
 _PORTUGUESE_WORDS = {"não", "nao", "do", "da", "dos", "das", "para", "com", "uma", "é", "está", "pelo", "pela", "sobre", "brasil", "chanceler", "foi"}
 _SPANISH_WORDS = {"el", "los", "las", "del", "por", "una"}
 _CURRENCY = re.compile(r"(?<!\w)(?:US|U\.S\.)\s?\$|(?<!\w)USD(?!\w)", re.IGNORECASE)
+# Tester additions on top of entities.yml. Duplicate terms already in the file
+# stay harmless; a later data update that adds the same terms still drops these.
+_EXTRA_HARD_TERMS = (
+    "amistoso",
+    "libertadores",
+    "sudamericana",
+    "clasificatoria*",
+    "vence a",
+    "gana a",
+    "empata con",
+    "entrenador",
+    "entrenadora",
+    "tecnico",
+    "treinador",
+)
+_EXTRA_PERSON_CUES = ("gol de", "goles de", "tecnico")
+_SCORELINE = re.compile(r"(?<!\d)\d{1,2}\s*-\s*\d{1,2}(?!\d)")
+_PERSON_GAP = r"(?:(?!(?:y|e|and|et|con|vs|contra|com|with|del|de)\b)[\w.'-]+\s+){0,2}"
+_PERSON_TAIL = r"[\s,()-]+(?:(?!(?:y|e|and|et|con|vs|contra|com|with)\b)\w+\s+){0,2}"
 
 
 def entities_path() -> Path:
@@ -96,6 +115,7 @@ class _Hit:
     kind: str
     start: int
     end: int
+    surface: str
 
 
 @dataclass(frozen=True)
@@ -108,6 +128,8 @@ class _SportsRule:
     soft: tuple[re.Pattern[str], ...]
     override: tuple[re.Pattern[str], ...]
     body_excludes: frozenset[str]
+    leader_override: bool
+    cues: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -270,9 +292,9 @@ def _build(raw: dict) -> EntityIndex:
             implied = person.get("implies_country") or group
             person_case = set(person.get("case_sensitive_aliases") or [])
             person_aliases = _strings(person.get("aliases"))
-            add_many(person_aliases, implied, "foreign", set(), person_case)
+            add_many(person_aliases, implied, "foreign_leader", set(), person_case)
             if person.get("implies_country") and person_aliases:
-                add_alias(person_aliases[0], group, "foreign", False, person_aliases[0] in person_case, None)
+                add_alias(person_aliases[0], group, "foreign_leader", False, person_aliases[0] in person_case, None)
             leaders.append(Leader(
                 name=person["name"],
                 role=person.get("title") or entry["id"],
@@ -312,15 +334,26 @@ def _build(raw: dict) -> EntityIndex:
     hard_lists = sports_raw.get("hard") or {}
     versus_lists = sports_raw.get("versus") or {}
     soft_lists = sports_raw.get("soft") or {}
+    leader_raw = sports_raw.get("leader_override") or {}
+    cues: list[str] = []
+    for cue in _strings(leader_raw.get("sports_person_cues")) + list(_EXTRA_PERSON_CUES):
+        folded = _fold(cue, lower=True)
+        if folded not in cues:
+            cues.append(folded)
     sports = _SportsRule(
         enabled=bool(sports_raw.get("enabled")),
         exceptions=compile_terms(sports_raw.get("exceptions")),
         bodies=compile_terms(sports_raw.get("sports_bodies")),
-        hard=compile_terms([term for language in ("es", "pt", "en", "fr", "pageants") for term in hard_lists.get(language, [])]),
+        hard=compile_terms(
+            [term for language in ("es", "pt", "en", "fr", "pageants") for term in hard_lists.get(language, [])]
+            + list(_EXTRA_HARD_TERMS)
+        ),
         versus=compile_terms([term for language in ("es", "pt", "en", "fr") for term in versus_lists.get(language, [])]),
         soft=compile_terms([term for language in ("es", "pt", "en", "fr") for term in soft_lists.get(language, [])]),
         override=compile_terms(sports_raw.get("override_ir")),
         body_excludes=frozenset(pattern.pattern for pattern in compile_terms(sports_raw.get("body_excludes"))),
+        leader_override=bool(leader_raw.get("enabled")),
+        cues=tuple(cues),
     )
     gdelt = raw["gdelt"]
     return EntityIndex(
@@ -396,42 +429,66 @@ def _blank_currency(headline: str) -> str:
     return _CURRENCY.sub(lambda match: " " * len(match.group(0)), headline)
 
 
-def _blank(pattern: re.Pattern[str], text: str) -> str:
-    return pattern.sub(lambda match: " " * len(match.group(0)), text)
+def _sports_person(text: str, surface: str, cues: tuple[str, ...]) -> bool:
+    """A coach or player cue next to this alias means the name is not the office-holder."""
+    if not cues or not surface:
+        return False
+    cue = "(?:" + "|".join(re.escape(item) for item in cues) + ")"
+    alias = re.escape(_fold(surface, lower=True)).replace(r"\ ", r"\s+")
+    before = rf"(?<!\w){cue}\s+{_PERSON_GAP}{alias}(?!\w)"
+    after = rf"(?<!\w){alias}(?!\w){_PERSON_TAIL}{cue}(?!\w)"
+    return re.search(before, text) is not None or re.search(after, text) is not None
 
 
-def _actors_keep_sports_headline(hits: list[_Hit], index: EntityIndex) -> bool:
-    """Leaders from two countries, a leader plus a foreign entity, or a bloc."""
-    leader_groups = {hit.group for hit in hits if hit.kind == "leader"}
-    foreign_groups = {hit.group for hit in hits if hit.kind == "foreign"}
-    if len(leader_groups) >= 2:
+def _leader_override(headline: str, hits: list[_Hit], index: EntityIndex) -> bool:
+    """Keep a sports headline that names two countries' leaders, or a leader and a foreign side.
+
+    A namesake next to a cue (``entrenador``, ``gol de``) does not count as that leader.
+    """
+    rule = index.sports
+    if not rule.leader_override:
+        return False
+    text = _fold(headline, lower=True)
+    leaders = [
+        hit for hit in hits
+        if not hit.weak and hit.kind in {"leader", "foreign_leader"} and not _sports_person(text, hit.surface, rule.cues)
+    ]
+    if len({hit.group for hit in leaders}) >= 2:
         return True
-    if leader_groups and any(group not in leader_groups for group in foreign_groups):
+    latam_leaders = {hit.group for hit in leaders if hit.kind == "leader" and hit.group in index.latam}
+    if latam_leaders and any(
+        not hit.weak and hit.kind in {"foreign", "foreign_leader"} and hit.group not in index.latam
+        for hit in hits
+    ):
         return True
-    return any(hit.group in index.institutions for hit in hits)
+    if any(hit.kind == "foreign_leader" and hit.group not in index.latam for hit in leaders):
+        return any(not hit.weak and hit.group in index.latam for hit in hits)
+    return False
 
 
 def _sports_drop(headline: str, hits: list[_Hit], index: EntityIndex) -> bool:
-    """Drop a fixture or pageant unless a real international-relations term is present.
+    """Drop a fixture or pageant unless a leader override or a strong IR term applies.
 
-    Conmebol or FIFA sanctions do not count. A cross-country leader pair, or a
-    bloc such as Mercosur, is not a fixture even if the wording looks like one.
+    Soft terms count once per distinct pattern, so Spanish and Portuguese ``partido``
+    are one term. ``deport*`` in the file no longer matches ``deporte``. Conmebol or
+    FIFA sanctions do not count as an override. A coach cue such as ``entrenador`` is
+    itself a hard sports signal.
     """
     rule = index.sports
     if not rule.enabled:
         return False
-    if _actors_keep_sports_headline(hits, index):
-        return False
     text = _fold(headline, lower=True)
     for pattern in rule.exceptions:
-        text = _blank(pattern, text)
-    hard = any(pattern.search(text) for pattern in rule.hard)
-    soft_hits = sum(1 for pattern in rule.soft if pattern.search(text))
+        text = pattern.sub(" ", text)
+    hard = any(pattern.search(text) for pattern in rule.hard) or _SCORELINE.search(text) is not None
+    soft_hits = len({pattern.pattern for pattern in rule.soft if pattern.search(text)})
     versus = any(pattern.search(text) for pattern in rule.versus)
     name_only = bool(hits) and all(hit.kind in {"name", "demonym"} for hit in hits)
     groups = {hit.group for hit in hits}
     is_sport = hard or soft_hits >= 2 or (versus and name_only and len(groups) >= 2) or (versus and soft_hits >= 1)
     if not is_sport:
+        return False
+    if _leader_override(headline, hits, index):
         return False
     body = any(pattern.search(text) for pattern in rule.bodies)
     for pattern in rule.override:
@@ -458,7 +515,7 @@ def _search_alias(alias: _Alias, text: str, language: str, uppercase: bool) -> l
     if alias.case_sensitive and uppercase:
         pattern = re.compile(pattern.pattern, pattern.flags | re.IGNORECASE)
     return [
-        _Hit(alias.group, alias.weak, alias.kind, match.start(), match.end())
+        _Hit(alias.group, alias.weak, alias.kind, match.start(), match.end(), match.group(0))
         for match in pattern.finditer(text)
     ]
 

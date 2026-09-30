@@ -4,12 +4,12 @@ meta:
   rule: keep only headlines about how a Latin American country/leader deals with another country/leader/institution. Tier 1 = names a LatAm entity AND a different country/leader/institution, or two LatAm
     entities. Tier 2 = one LatAm entity + an IR term. Else drop (domestic).
   source_headline_count: 58
-  total_cases: 125
-  synthetic_cases: 67
+  total_cases: 152
+  synthetic_cases: 94
   counts:
-    should_match_tier1: 52
+    should_match_tier1: 68
     should_match_tier2: 4
-    should_drop: 69
+    should_drop: 80
     borderline: 15
   note: 'IDs T01.. are real example headlines (all headlines found in Prototipo_Noticias, notipo_, notipo__1; the Medios_Posibles file has none). IDs S01.. are synthetic guards. The `expected` label is
     the rule-based classification; items in `borderline` are the ones Sam should rule on (changing them changes the label). Run: python3 check_entities.py entities.yml test_headlines.yml'
@@ -419,6 +419,118 @@ should_match:
   headline: El Partido Nacional de Honduras denuncia injerencia de EEUU
   expected: 1
   reason: Political party + EEUU; sports_rule exception 'Partido Nacional'
+- id: S68
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina reclama a Brasil por partido de Mercosur
+  expected: 1
+  reason: 'MUST-KEEP (Tester FP): ''partido'' alone is only one soft term (no longer double-counted es+pt) and Mercosur is a strong IR institution'
+- id: S69
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Selección de Colombia visita la Casa Blanca; Petro y Trump hablan
+  expected: 1
+  reason: 'MUST-KEEP (Tester FP): ''Selección de Colombia'' is a hard sports term but leader_override fires (Petro + Trump = two countries'' leaders; LatAm leader + Casa Blanca)'
+- id: S71
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump sanciona a Petro
+  expected: 1
+  reason: 'CONTROL TRUE POSITIVE: Trump + Petro, ''sanciona a'' is a real sanction'
+- id: S72
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido Comunista de Cuba rechaza sanciones de EEUU
+  expected: 1
+  reason: 'CONTROL TRUE POSITIVE: political party (sports exception) + sanciones + EEUU'
+- id: S74
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Brasil gana a Argentina; Lula y Milei se cruzan en redes
+  expected: 1
+  reason: 'CONTROL KEEP: versus verb but two countries'' leaders are named => leader_override keeps it'
+- id: S75
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Seleção brasileira visita Casa Branca; Lula e Trump conversam sobre tarifas
+  expected: 1
+  reason: 'ADV pt: seleção + leaders of BR and US + tarifas'
+- id: S76
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Copa del Mundo: Milei y Lula acuerdan cumbre sobre el Mundial 2030'
+  expected: 1
+  reason: 'ADV es: copa/mundial 2030 but two LatAm leaders + cumbre'
+- id: S77
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Lula assiste ao jogo da seleção ao lado de Milei e fecha acordo comercial
+  expected: 1
+  reason: 'ADV pt: jogo/seleção + Lula + Milei + acordo comercial'
+- id: S78
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump threatens sanctions on Brazil after World Cup comments by Lula
+  expected: 1
+  reason: 'ADV en: world cup + Trump + Lula + sanctions'
+- id: S79
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'World Cup: Trump says Mexico and Canada must pay for security, Sheinbaum replies'
+  expected: 1
+  reason: 'ADV en: world cup + Trump vs Sheinbaum'
+- id: S80
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Cancillería de Chile protesta por insultos a hinchas chilenos en partido en Lima
+  expected: 1
+  reason: 'ADV es: partido/hinchas but cancillería (strong IR) + Chile + Lima/Peru'
+- id: S81
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Copa Airlines suspende vuelos a Venezuela por sanciones de EEUU
+  expected: 1
+  reason: 'ADV es: ''Copa Airlines'' is an exception (not sports); sanciones + EEUU + Venezuela'
+- id: S82
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Partido de Mercosur: Milei y Lula discrepan'
+  expected: 1
+  reason: 'ADV es: partido + Mercosur + two leaders'
+- id: S83
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Trump sanciona a la selección de Venezuela
+  expected: 1
+  reason: 'ADV es: hard sports term ''selección de Venezuela'' but foreign leader (Trump) + LatAm entity and ''sanciona a'''
+- id: S84
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Mundial: Maduro critica a Trump por la sede'
+  expected: 1
+  reason: 'ADV es: mundial + Maduro vs Trump'
+- id: S94
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Xi Jinping invita a la selección de Perú a Pekín; Boluarte agradece
+  expected: 1
+  reason: 'ADV es: selección de Perú + Xi Jinping (foreign leader) + Peru'
 should_drop:
 - id: T03
   source_file: Prototipo_Noticias.docx.txt
@@ -905,6 +1017,83 @@ should_drop:
   headline: Lula derrota a Bolsonaro en las urnas
   expected: drop
   reason: 'Politics, not sports: leaders only, single country, no IR term'
+- id: S70
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sheinbaum sanciona reforma judicial
+  expected: drop
+  reason: 'CONTROL: law-signing, single-country leader; must not be read as sanctions'
+- id: S73
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Argentina derrota a la inflación
+  expected: drop
+  reason: 'CONTROL: ''derrota a'' is a versus verb but only one country group and no opponent country => not a fixture; domestic economy'
+- id: S85
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: El entrenador Ortega renueva con la selección de Nicaragua
+  expected: drop
+  reason: 'ADV es: ''Ortega'' is a coach namesake (sports_person_cues), not Daniel Ortega; sports drop stays'
+- id: S86
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Delantero Petro marca dos goles con la selección de Colombia
+  expected: drop
+  reason: 'ADV es: striker namesake ''Petro'' is not the president'
+- id: S87
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Coach Petro Silva leads Colombia to World Cup win over US
+  expected: drop
+  reason: 'ADV en: coach namesake + two country names in a fixture'
+- id: S88
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Jogo Brasil x Argentina termina em goleada de 3 a 0 no Maracanã
+  expected: drop
+  reason: 'ADV pt: pure fixture (jogo + goleada)'
+- id: S89
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Sheinbaum inaugura estadio para el Mundial 2026
+  expected: drop
+  reason: 'ADV es: single leader, domestic World Cup infrastructure; no foreign entity'
+- id: S90
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: La selección de Uruguay vence a Paraguay por 2-0 en Asunción
+  expected: drop
+  reason: 'ADV es: pure fixture'
+- id: S91
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Partido de gobierno en Perú pierde en el Congreso
+  expected: drop
+  reason: 'ADV es: ''partido de gobierno'' = ruling party; single country, no IR term, no 2nd soft cue'
+- id: S92
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: Maduro sanciona ley del Mundial
+  expected: drop
+  reason: 'ADV es: law-signing + mundial; single leader'
+- id: S93
+  source_file: synthetic (false-positive / language guards written for this config)
+  publisher: (synthetic)
+  synthetic: true
+  headline: 'Campeonato: Lula sanciona ley del deporte'
+  expected: drop
+  reason: 'ADV pt/es: sports word + law-signing; ''deporte'' must not trigger the deport* IR term (tightened to deport/deportation)'
 borderline:
 - id: T01
   headline: 'EU investiga a Andy López Beltrán por crimen organizado y huachicol: NYT'

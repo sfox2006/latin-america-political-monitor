@@ -129,6 +129,18 @@ law_signing_stoplist:
 # are politics, so (c) does not apply.
 # A SPORTS headline is DROPPED unless it also has an `override_ir` term (a strong IR term).  If a sports governing body
 # (`sports_bodies`) is present, the `body_excludes` override terms (sanctions) do not count: "Conmebol sanciona a Argentina".
+# NOTE (2026-09-30 fix): `soft` terms are counted as DISTINCT terms (the es and pt lists both contain "partido"/"liga"/"final"; counting
+# both made a single "partido" = 2 soft hits = sports).  `partido` alone is therefore NOT sports; it needs a 2nd distinct soft cue or a
+# hard/versus cue ("Argentina reclama a Brasil por partido de Mercosur" = kept).  Strong IR INSTITUTIONS (Mercosur, OEA, ONU, CELAC,
+# FMI, Comunidad Andina, ...) are in `override_ir`, so a sports-looking headline naming one is kept.
+# LEADER OVERRIDE (`leader_override`, implemented in check_entities.py leader_override()/sports_drop()): evaluated BEFORE override_ir, AFTER the
+# sports decision.  A sports-classified headline is KEPT (not dropped) when
+#   (a) it names leaders of two DIFFERENT countries (LatAm+LatAm, or LatAm+foreign e.g. Petro + Trump; same-country pairs do not count), or
+#   (b) it names a LatAm leader AND a non-LatAm foreign entity (US/EEUU/Casa Blanca/White House/China/UE/institution/foreign person), or
+#   (c) it names a foreign leader/official (Trump, Xi, Putin, Rubio...) AND any LatAm country/demonym/leader ("Trump sanciona a la seleccion de Venezuela").
+# Only NON-weak alias hits of kind leader / foreign-person count.  A leader alias directly adjacent (<=2 words, no connector) to a
+# `sports_person_cues` word ("entrenador Ortega", "Petro, delantero") is a namesake coach/player, not a leader, and is ignored.
+# Not affected: a pure fixture with no leader ("Chile vs Argentina: final de la Copa"), and sports-body discipline ("Conmebol sanciona a Argentina").
 sports_rule:
   enabled: true
   exceptions:                        # masked before sports matching (non-sport uses of sport-looking words)
@@ -151,6 +163,9 @@ sports_rule:
     - "Partido Laborista"
     - "Partido dos Trabalhadores"
     - "Partido de los Trabajadores"
+  leader_override:
+    enabled: true
+    sports_person_cues: ["entrenador", "entrenadora", "dt", "director tecnico", "tecnico", "delantero", "arquero", "portero", "defensa", "mediocampista", "volante", "jugador", "jugadora", "futbolista", "goleador", "capitan", "tenista", "arbitro", "coach", "striker", "goalkeeper", "midfielder", "player", "referee", "treinador", "atacante", "goleiro", "zagueiro", "jogador", "meia"]
   sports_bodies: ["fifa", "conmebol", "uefa", "concacaf", "comite olimpico", "olympic committee", "atp", "wta", "nba", "mlb", "cbf", "afa"]
   hard:
     es: ["copa", "copas", "eliminatoria*", "mundial (2022|2026|2030|2034|2038)", "mundial de (futbol|clubes|rugby|atletismo|basquet|beisbol|voleibol|tenis)", "mundial sub", "mundialista*",
@@ -222,7 +237,7 @@ sports_rule:
     - "cumbre de presidentes"
     - "summit"
     - "deportacion*"
-    - "deport*"
+    - "deport(s|ed|ing|ation|ations|ee|ees)?"
     - "omc"
     - "wto"
     - "cij"
@@ -232,6 +247,29 @@ sports_rule:
     - "tribunal internacional"
     - "boicot diplomatico"
     - "diplomatic boycott"
+    # strong IR institutions (added 2026-09-30): sports-looking wording next to one of these is politics
+    - "mercosur"
+    - "mercosul"
+    - "celac"
+    - "comunidad andina"
+    - "comunidade andina"
+    - "andean community"
+    - "fmi"
+    - "fondo monetario"
+    - "imf"
+    - "brics"
+    - "alba-tcp"
+    - "alianza del pacifico"
+    - "caricom"
+    - "sica"
+    - "cidh"
+    - "corte idh"
+    - "oas"
+    - "organizacion de (los )?estados americanos"
+    - "casa blanca"
+    - "white house"
+    - "casa branca"
+    - "departamento de estado"
   body_excludes:                      # override terms that do NOT count when a sports governing body is present
     - "sanciones"
     - "sancion (economica|financiera|comercial|diplomatica|internacional|contra)"
@@ -1365,7 +1403,7 @@ ir_terms:
       - "treaty"
       - "treaties"
       - "extradit*"
-      - "deport*"
+      - "deport(s|ed|ing|ation|ations|ee|ees)?"
       - "summit"
       - "expel*"
       - "expulsion"
@@ -1440,7 +1478,7 @@ ir_terms:
       - "extrad*"
       - "expulsion*"
       - "expuls*"
-      - "deport*"
+      - "deportation*"
       - "sommet"
       - "diplomat*"
       - "ministre des affaires etrangeres"
